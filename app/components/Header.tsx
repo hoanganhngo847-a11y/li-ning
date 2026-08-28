@@ -45,7 +45,7 @@ export default function Header() {
     }
     desktopMenuCloseTimer.current = setTimeout(() => {
       setOpenDesktopMenu(null);
-    }, 180);
+    }, 650);
   };
 
   const toggleMobileMenu = (title: string) => {
@@ -56,7 +56,7 @@ export default function Header() {
   };
 
   return (
-    <header className={cn("w-full transition-all duration-300", isScrolled ? "fixed top-0 left-0 z-50 bg-white shadow-md" : "relative bg-white z-50")}>
+    <header className={cn("w-full transition-all duration-300", isScrolled ? "fixed top-0 left-0 z-[100] bg-white shadow-md" : "relative bg-white z-[100]")}>
       {/* Top Announcement Bar */}
       <div className="bg-[#f30d29] text-white text-center py-1.5 text-sm font-medium">
         FREESHIP cho đơn hàng từ 1.000.000đ | Hotline: 1900633083
@@ -99,7 +99,7 @@ export default function Header() {
               return (
                 <li
                   key={item.title}
-                  className="relative h-full flex items-center"
+                  className="relative h-full flex items-center z-[110]"
                   onMouseEnter={() => item.children && openDesktopDropdown(item.title)}
                   onMouseLeave={closeDesktopDropdown}
                   onFocus={() => item.children && openDesktopDropdown(item.title)}
@@ -118,13 +118,13 @@ export default function Header() {
                       /* Multi-column Mega Menu (NAM, NỮ) */
                       <div
                         className={cn(
-                          "absolute top-full -left-20 lg:-left-32 bg-white shadow-xl border-t-2 border-[#f30d29] transition-all duration-200 w-[850px] p-6 z-50 rounded-b-sm",
+                          "absolute top-[calc(100%-1px)] -left-20 lg:-left-32 bg-white shadow-xl border-t-2 border-[#f30d29] transition-all duration-200 w-[850px] p-6 z-[200] rounded-b-sm",
                           isOpen ? "opacity-100 visible pointer-events-auto translate-y-0" : "opacity-0 invisible pointer-events-none -translate-y-1"
                         )}
                         onMouseEnter={() => openDesktopDropdown(item.title)}
                         onMouseLeave={closeDesktopDropdown}
                       >
-                        <div className="absolute -top-3 left-0 right-0 h-3" aria-hidden="true" />
+                        <div className="absolute -top-6 left-0 right-0 h-6" aria-hidden="true" />
                         <div className="grid grid-cols-5 gap-6">
                           {item.children.map((child, idx) => (
                             <div key={idx} className="flex flex-col">
@@ -135,7 +135,7 @@ export default function Header() {
                                 <ul className="flex flex-col space-y-1.5">
                                   {child.children.map((subChild, subIdx) => (
                                     <li key={subIdx}>
-                                      <Link href={subChild.href} className="text-gray-600 hover:text-[#f30d29] text-xs transition-colors block py-0.5">
+                                      <Link href={subChild.href} onClick={() => setOpenDesktopMenu(null)} className="text-gray-600 hover:text-[#f30d29] text-xs transition-colors block py-0.5">
                                         {subChild.title}
                                       </Link>
                                     </li>
@@ -150,18 +150,19 @@ export default function Header() {
                       /* Single-column Dropdown (MÔN THỂ THAO, THỜI TRANG, YOUNG, SALE, TIN TỨC) */
                       <div
                         className={cn(
-                          "absolute top-full left-0 bg-white shadow-lg border-t-2 border-[#f30d29] transition-all duration-200 min-w-[210px] py-2 z-50 rounded-b-sm",
+                          "absolute top-[calc(100%-1px)] left-0 bg-white shadow-lg border-t-2 border-[#f30d29] transition-all duration-200 min-w-[210px] py-2 z-[200] rounded-b-sm",
                           isOpen ? "opacity-100 visible pointer-events-auto translate-y-0" : "opacity-0 invisible pointer-events-none -translate-y-1"
                         )}
                         onMouseEnter={() => openDesktopDropdown(item.title)}
                         onMouseLeave={closeDesktopDropdown}
                       >
-                        <div className="absolute -top-3 left-0 right-0 h-3" aria-hidden="true" />
+                        <div className="absolute -top-6 left-0 right-0 h-6" aria-hidden="true" />
                         <ul className="flex flex-col">
                           {item.children.map((child, idx) => (
                             <li key={idx}>
                               <Link
                                 href={child.href}
+                                onClick={() => setOpenDesktopMenu(null)}
                                 className="block px-4 py-2.5 text-sm text-gray-700 hover:text-[#f30d29] hover:bg-gray-50 uppercase font-medium transition-colors border-b border-gray-50 last:border-0"
                               >
                                 {child.title}
