@@ -55,6 +55,16 @@ export default function Header() {
     }));
   };
 
+  const navigateFromDesktopMenu = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    event.preventDefault();
+    setOpenDesktopMenu(null);
+    window.location.assign(href);
+  };
+
   return (
     <header className={cn("w-full transition-all duration-300", isScrolled ? "fixed top-0 left-0 z-[100] bg-white shadow-md" : "relative bg-white z-[100]")}>
       {/* Top Announcement Bar */}
@@ -128,16 +138,16 @@ export default function Header() {
                         <div className="grid grid-cols-5 gap-6">
                           {item.children.map((child, idx) => (
                             <div key={idx} className="flex flex-col">
-                              <Link href={child.href} className="font-bold text-[#111111] mb-2.5 hover:text-[#f30d29] uppercase text-sm border-b pb-1">
+                              <a href={child.href} onMouseDown={(event) => navigateFromDesktopMenu(event, child.href)} className="font-bold text-[#111111] mb-2.5 hover:text-[#f30d29] uppercase text-sm border-b pb-1">
                                 {child.title}
-                              </Link>
+                              </a>
                               {child.children && (
                                 <ul className="flex flex-col space-y-1.5">
                                   {child.children.map((subChild, subIdx) => (
                                     <li key={subIdx}>
-                                      <Link href={subChild.href} onClick={() => setOpenDesktopMenu(null)} className="text-gray-600 hover:text-[#f30d29] text-xs transition-colors block py-0.5">
+                                      <a href={subChild.href} onMouseDown={(event) => navigateFromDesktopMenu(event, subChild.href)} className="text-gray-600 hover:text-[#f30d29] text-xs transition-colors block py-0.5">
                                         {subChild.title}
-                                      </Link>
+                                      </a>
                                     </li>
                                   ))}
                                 </ul>
@@ -160,13 +170,13 @@ export default function Header() {
                         <ul className="flex flex-col">
                           {item.children.map((child, idx) => (
                             <li key={idx}>
-                              <Link
+                              <a
                                 href={child.href}
-                                onClick={() => setOpenDesktopMenu(null)}
+                                onMouseDown={(event) => navigateFromDesktopMenu(event, child.href)}
                                 className="block px-4 py-2.5 text-sm text-gray-700 hover:text-[#f30d29] hover:bg-gray-50 uppercase font-medium transition-colors border-b border-gray-50 last:border-0"
                               >
                                 {child.title}
-                              </Link>
+                              </a>
                             </li>
                           ))}
                         </ul>
