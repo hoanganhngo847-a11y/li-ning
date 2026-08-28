@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/app/lib/cart-context';
 import { navigation as mainNavigation } from '@/app/lib/data/navigation';
-import { NavItem } from '@/app/lib/types';
+import type { NavItem } from '@/app/lib/types';
 import { cn } from '@/app/lib/utils';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [openDesktopMenu, setOpenDesktopMenu] = useState<string | null>(null);
   const [expandedMobileMenus, setExpandedMobileMenus] = useState<Record<string, boolean>>({});
+  const desktopMenuCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { totalItems } = useCart();
 
   useEffect(() => {
@@ -21,6 +23,30 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (desktopMenuCloseTimer.current) {
+        clearTimeout(desktopMenuCloseTimer.current);
+      }
+    };
+  }, []);
+
+  const openDesktopDropdown = (title: string) => {
+    if (desktopMenuCloseTimer.current) {
+      clearTimeout(desktopMenuCloseTimer.current);
+    }
+    setOpenDesktopMenu(title);
+  };
+
+  const closeDesktopDropdown = () => {
+    if (desktopMenuCloseTimer.current) {
+      clearTimeout(desktopMenuCloseTimer.current);
+    }
+    desktopMenuCloseTimer.current = setTimeout(() => {
+      setOpenDesktopMenu(null);
+    }, 180);
+  };
 
   const toggleMobileMenu = (title: string) => {
     setExpandedMobileMenus((prev) => ({
@@ -66,61 +92,89 @@ export default function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center justify-center flex-1 h-full mx-8">
           <ul className="flex space-x-6 h-full">
-            {mainNavigation.map((item) => (
-              <li key={item.title} className="relative group h-full flex items-center">
-                <Link href={item.href} className="text-[#111111] hover:text-[#f30d29] font-medium text-[15px] uppercase flex items-center gap-1">
-                  {item.title}
-                  {item.children && (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                  )}
-                </Link>
+            {mainNavigation.map((item) => {
+              const isOpen = openDesktopMenu === item.title;
+              const hasMegaMenu = item.children?.some((child: NavItem) => child.children && child.children.length > 0);
 
-                {/* Desktop Dropdowns */}
-                {item.children && (
-                  item.children.some(c => c.children && c.children.length > 0) ? (
-                    /* Multi-column Mega Menu (NAM, NỮ) */
-                    <div className="absolute top-full -left-20 lg:-left-32 bg-white shadow-xl border-t-2 border-[#f30d29] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-[850px] p-6 z-50 rounded-b-sm">
-                      <div className="grid grid-cols-5 gap-6">
-                        {item.children.map((child, idx) => (
-                          <div key={idx} className="flex flex-col">
-                            <Link href={child.href} className="font-bold text-[#111111] mb-2.5 hover:text-[#f30d29] uppercase text-sm border-b pb-1">
-                              {child.title}
-                            </Link>
-                            {child.children && (
-                              <ul className="flex flex-col space-y-1.5">
-                                {child.children.map((subChild, subIdx) => (
-                                  <li key={subIdx}>
-                                    <Link href={subChild.href} className="text-gray-600 hover:text-[#f30d29] text-xs transition-colors block py-0.5">
-                                      {subChild.title}
-                                    </Link>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        ))}
+              return (
+                <li
+                  key={item.title}
+                  className="relative h-full flex items-center"
+                  onMouseEnter={() => item.children && openDesktopDropdown(item.title)}
+                  onMouseLeave={closeDesktopDropdown}
+                  onFocus={() => item.children && openDesktopDropdown(item.title)}
+                  onBlur={closeDesktopDropdown}
+                >
+                  <Link href={item.href} className="text-[#111111] hover:text-[#f30d29] font-medium text-[15px] uppercase flex items-center gap-1">
+                    {item.title}
+                    {item.children && (
+                      <svg className={cn("w-4 h-4 transition-transform duration-200", isOpen && "rotate-180")} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    )}
+                  </Link>
+
+                  {/* Desktop Dropdowns */}
+                  {item.children && (
+                    hasMegaMenu ? (
+                      /* Multi-column Mega Menu (NAM, NỮ) */
+                      <div
+                        className={cn(
+                          "absolute top-full -left-20 lg:-left-32 bg-white shadow-xl border-t-2 border-[#f30d29] transition-all duration-200 w-[850px] p-6 z-50 rounded-b-sm",
+                          isOpen ? "opacity-100 visible pointer-events-auto translate-y-0" : "opacity-0 invisible pointer-events-none -translate-y-1"
+                        )}
+                        onMouseEnter={() => openDesktopDropdown(item.title)}
+                        onMouseLeave={closeDesktopDropdown}
+                      >
+                        <div className="absolute -top-3 left-0 right-0 h-3" aria-hidden="true" />
+                        <div className="grid grid-cols-5 gap-6">
+                          {item.children.map((child, idx) => (
+                            <div key={idx} className="flex flex-col">
+                              <Link href={child.href} className="font-bold text-[#111111] mb-2.5 hover:text-[#f30d29] uppercase text-sm border-b pb-1">
+                                {child.title}
+                              </Link>
+                              {child.children && (
+                                <ul className="flex flex-col space-y-1.5">
+                                  {child.children.map((subChild, subIdx) => (
+                                    <li key={subIdx}>
+                                      <Link href={subChild.href} className="text-gray-600 hover:text-[#f30d29] text-xs transition-colors block py-0.5">
+                                        {subChild.title}
+                                      </Link>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    /* Single-column Dropdown (MÔN THỂ THAO, THỜI TRANG, YOUNG, SALE, TIN TỨC) */
-                    <div className="absolute top-full left-0 bg-white shadow-lg border-t-2 border-[#f30d29] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 min-w-[210px] py-2 z-50 rounded-b-sm">
-                      <ul className="flex flex-col">
-                        {item.children.map((child, idx) => (
-                          <li key={idx}>
-                            <Link 
-                              href={child.href} 
-                              className="block px-4 py-2.5 text-sm text-gray-700 hover:text-[#f30d29] hover:bg-gray-50 uppercase font-medium transition-colors border-b border-gray-50 last:border-0"
-                            >
-                              {child.title}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )
-                )}
-              </li>
-            ))}
+                    ) : (
+                      /* Single-column Dropdown (MÔN THỂ THAO, THỜI TRANG, YOUNG, SALE, TIN TỨC) */
+                      <div
+                        className={cn(
+                          "absolute top-full left-0 bg-white shadow-lg border-t-2 border-[#f30d29] transition-all duration-200 min-w-[210px] py-2 z-50 rounded-b-sm",
+                          isOpen ? "opacity-100 visible pointer-events-auto translate-y-0" : "opacity-0 invisible pointer-events-none -translate-y-1"
+                        )}
+                        onMouseEnter={() => openDesktopDropdown(item.title)}
+                        onMouseLeave={closeDesktopDropdown}
+                      >
+                        <div className="absolute -top-3 left-0 right-0 h-3" aria-hidden="true" />
+                        <ul className="flex flex-col">
+                          {item.children.map((child, idx) => (
+                            <li key={idx}>
+                              <Link
+                                href={child.href}
+                                className="block px-4 py-2.5 text-sm text-gray-700 hover:text-[#f30d29] hover:bg-gray-50 uppercase font-medium transition-colors border-b border-gray-50 last:border-0"
+                              >
+                                {child.title}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
