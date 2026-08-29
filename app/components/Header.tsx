@@ -65,6 +65,18 @@ export default function Header() {
     window.location.assign(href);
   };
 
+  const navigateHomeFromLogo = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    event.preventDefault();
+    setOpenDesktopMenu(null);
+    setIsMobileMenuOpen(false);
+    setIsSearchOpen(false);
+    window.location.assign('/');
+  };
+
   return (
     <header className={cn("w-full transition-all duration-300", isScrolled ? "fixed top-0 left-0 z-[100] bg-white shadow-md" : "relative bg-white z-[100]")}>
       {/* Top Announcement Bar */}
@@ -79,25 +91,25 @@ export default function Header() {
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-1 cursor-pointer">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
-          <Link href="/" className="inline-block">
-            <img 
-              src="https://cdn.hstatic.net/themes/1000312752/1001500748/14/logo.png?v=165" 
-              alt="Li-Ning Logo" 
-              className="mobile-header-logo" 
+          <a href="/" onMouseDown={navigateHomeFromLogo} className="inline-block relative z-[120]" aria-label="Về trang chủ">
+            <img
+              src="https://cdn.hstatic.net/themes/1000312752/1001500748/14/logo.png?v=165"
+              alt="Li-Ning Logo"
+              className="mobile-header-logo"
               style={{ height: '30px', maxHeight: '30px', width: 'auto', display: 'inline-block' }}
             />
-          </Link>
+          </a>
         </div>
 
         {/* Desktop Logo */}
-        <Link href="/" className="hidden lg:block shrink-0">
-          <img 
-            src="https://cdn.hstatic.net/themes/1000312752/1001500748/14/logo.png?v=165" 
-            alt="Li-Ning Logo" 
-            className="header-logo" 
+        <a href="/" onMouseDown={navigateHomeFromLogo} className="hidden lg:block shrink-0 relative z-[120]" aria-label="Về trang chủ">
+          <img
+            src="https://cdn.hstatic.net/themes/1000312752/1001500748/14/logo.png?v=165"
+            alt="Li-Ning Logo"
+            className="header-logo"
             style={{ height: '38px', maxHeight: '38px', width: 'auto', display: 'inline-block' }}
           />
-        </Link>
+        </a>
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center justify-center flex-1 h-full mx-8">
