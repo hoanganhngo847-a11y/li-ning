@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { adminCategoryTree, getFirstLeaf, getLeafCategories, type AdminCategoryNode } from '../../lib/category-tree';
 import { getProductsForCollection } from '@/app/lib/data/collectionMap';
 import { formatPrice } from '@/app/lib/utils';
@@ -69,12 +68,12 @@ export default function AdminCategoriesPage() {
             Chọn từng lớp danh mục để kiểm tra sản phẩm đang nằm trong danh mục con nào trên website.
           </p>
         </div>
-        <Link
+        <a
           href="/admin/products/new"
           className="inline-flex items-center justify-center rounded-md bg-[#f30d29] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
         >
           Thêm sản phẩm
-        </Link>
+        </a>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -184,13 +183,14 @@ export default function AdminCategoriesPage() {
               <div className="mt-1 text-lg font-semibold text-gray-950">{activeLeaf?.title}</div>
             </div>
             {activeLeaf && (
-              <Link
+              <a
                 href={`/collections/${activeLeaf.handle}`}
                 target="_blank"
+                rel="noreferrer"
                 className="text-sm font-semibold text-[#f30d29] hover:underline"
               >
                 Xem ngoài website
-              </Link>
+              </a>
             )}
           </div>
 
@@ -214,9 +214,9 @@ export default function AdminCategoriesPage() {
                     <div className="mt-1 text-xs text-gray-500">SKU: {product.sku}</div>
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <span className="text-sm font-semibold text-[#f30d29]">{formatPrice(product.price)}</span>
-                      <Link href={`/admin/products/${product.id}/edit`} className="text-xs font-semibold text-blue-600 hover:underline">
+                      <a href={`/admin/products/${product.id}/edit`} className="text-xs font-semibold text-blue-600 hover:underline">
                         Sửa
-                      </Link>
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -226,12 +226,12 @@ export default function AdminCategoriesPage() {
             <div className="px-4 py-16 text-center">
               <div className="text-sm font-semibold text-gray-950">Danh mục này chưa có sản phẩm</div>
               <p className="mt-1 text-sm text-gray-500">Thêm sản phẩm và chọn đúng danh mục con này trong form.</p>
-              <Link
+              <a
                 href="/admin/products/new"
                 className="mt-4 inline-flex rounded-md bg-[#f30d29] px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
               >
                 Thêm sản phẩm
-              </Link>
+              </a>
             </div>
           )}
         </section>

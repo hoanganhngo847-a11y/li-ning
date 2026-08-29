@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
 import CategoryPicker from '../../../../components/CategoryPicker';
 
 export default function EditProduct() {
@@ -158,9 +157,9 @@ export default function EditProduct() {
           <button onClick={handleDelete} className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm font-medium">
             Xóa sản phẩm
           </button>
-          <Link href="/admin/products" className="text-gray-600 hover:underline py-2">
+          <a href="/admin/products" className="text-gray-600 hover:underline py-2">
             Quay lại
-          </Link>
+          </a>
         </div>
       </div>
 
@@ -272,9 +271,9 @@ export default function EditProduct() {
 
         {/* Submit */}
         <div className="flex justify-end gap-4">
-          <Link href="/admin/products" className="px-6 py-2 border rounded hover:bg-gray-50 font-medium">
+          <a href="/admin/products" className="px-6 py-2 border rounded hover:bg-gray-50 font-medium">
             Hủy
-          </Link>
+          </a>
           <button type="submit" disabled={saving} className="px-6 py-2 bg-[#f30d29] text-white rounded hover:bg-red-700 font-medium disabled:opacity-70">
             {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
           </button>

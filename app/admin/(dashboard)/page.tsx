@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 
 export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
@@ -38,9 +37,9 @@ export default function AdminDashboard() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <div className="space-x-3">
-          <Link href="/admin/products/new" className="bg-[#f30d29] text-white px-4 py-2 rounded shadow hover:bg-red-700">
+          <a href="/admin/products/new" className="bg-[#f30d29] text-white px-4 py-2 rounded shadow hover:bg-red-700">
             + Thêm sản phẩm
-          </Link>
+          </a>
         </div>
       </div>
 
@@ -71,19 +70,19 @@ export default function AdminDashboard() {
               Kiểm tra danh mục cha, nhóm danh mục, danh mục con và toàn bộ sản phẩm đang nằm trong từng mục.
             </p>
           </div>
-          <Link
+          <a
             href="/admin/categories"
             className="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50"
           >
             Mở trang danh mục
-          </Link>
+          </a>
         </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900">Sản phẩm mới nhất</h2>
-          <Link href="/admin/products" className="text-sm text-[#f30d29] hover:underline">Xem tất cả</Link>
+          <a href="/admin/products" className="text-sm text-[#f30d29] hover:underline">Xem tất cả</a>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">

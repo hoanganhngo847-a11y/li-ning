@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { products as seededProducts } from '@/app/lib/data/products';
 import { buildUniqueHandle, normalizeProductBody } from '../product-utils';
+
+declare global {
+  // eslint-disable-next-line no-var
+  var liNingAdminProducts: any[] | undefined;
+}
+
+function cloneProducts(products: any[]) {
+  return products.map((product) => ({
+    ...product,
+    images: [...(product.images || [])],
+    variants: (product.variants || []).map((variant: any) => ({ ...variant })),
+    collections: [...(product.collections || [])],
+  }));
+}
+
+function getProductsStore() {
+  if (!globalThis.liNingAdminProducts) {
+    globalThis.liNingAdminProducts = cloneProducts(seededProducts);
+  }
+
+  return globalThis.liNingAdminProducts;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,9 +30,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')?.toLowerCase() || '';
     const gender = searchParams.get('gender') || '';
 
-    const filePath = join(process.cwd(), 'data', 'products.json');
-    const data = readFileSync(filePath, 'utf-8');
-    let products = JSON.parse(data);
+    let products = [...getProductsStore()];
 
     if (search) {
       products = products.filter((p: any) => 
@@ -31,9 +50,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as any;
-    const filePath = join(process.cwd(), 'data', 'products.json');
-    const data = readFileSync(filePath, 'utf-8');
-    const products = JSON.parse(data);
+    const products = getProductsStore();
 
     const maxId = products.reduce((max: number, p: any) => {
       const id = parseInt(p.id, 10);
@@ -47,8 +64,7 @@ export async function POST(request: NextRequest) {
       handle: buildUniqueHandle(normalizedProduct.handle, products, newId),
     };
 
-    products.push(newProduct);
-    writeFileSync(filePath, JSON.stringify(products, null, 2), 'utf-8');
+    products.unshift(newProduct);
 
     return NextResponse.json(newProduct, { status: 201 });
   } catch (error) {

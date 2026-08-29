@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import CategoryPicker from '../../../components/CategoryPicker';
 
 export default function NewProduct() {
@@ -104,9 +103,9 @@ export default function NewProduct() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Thêm sản phẩm mới</h1>
-        <Link href="/admin/products" className="text-gray-600 hover:underline">
+        <a href="/admin/products" className="text-gray-600 hover:underline">
           Quay lại
-        </Link>
+        </a>
       </div>
 
       {error && <div className="bg-red-100 text-red-700 p-4 rounded">{error}</div>}
@@ -217,9 +216,9 @@ export default function NewProduct() {
 
         {/* Submit */}
         <div className="flex justify-end gap-4">
-          <Link href="/admin/products" className="px-6 py-2 border rounded hover:bg-gray-50 font-medium">
+          <a href="/admin/products" className="px-6 py-2 border rounded hover:bg-gray-50 font-medium">
             Hủy
-          </Link>
+          </a>
           <button type="submit" disabled={loading} className="px-6 py-2 bg-[#f30d29] text-white rounded hover:bg-red-700 font-medium disabled:opacity-70">
             {loading ? 'Đang lưu...' : 'Lưu sản phẩm'}
           </button>

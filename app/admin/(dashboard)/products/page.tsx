@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { adminCategoryTree, getLeafCategories, getCategoryPath, getPrimaryLeafHandle, type AdminCategoryNode } from '../../lib/category-tree';
 import { getProductsForCollection } from '@/app/lib/data/collectionMap';
 import type { Product } from '@/app/lib/types';
@@ -82,9 +81,9 @@ export default function AdminProducts() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Quản lý sản phẩm</h1>
-        <Link href="/admin/products/new" className="bg-[#f30d29] text-white px-4 py-2 rounded shadow hover:bg-red-700">
+        <a href="/admin/products/new" className="bg-[#f30d29] text-white px-4 py-2 rounded shadow hover:bg-red-700">
           + Thêm sản phẩm
-        </Link>
+        </a>
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -236,9 +235,9 @@ export default function AdminProducts() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right space-x-3">
-                      <Link href={`/admin/products/${product.id}/edit`} className="text-blue-600 hover:underline text-sm">
+                      <a href={`/admin/products/${product.id}/edit`} className="text-blue-600 hover:underline text-sm">
                         Sửa
-                      </Link>
+                      </a>
                       <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:underline text-sm">
                         Xóa
                       </button>

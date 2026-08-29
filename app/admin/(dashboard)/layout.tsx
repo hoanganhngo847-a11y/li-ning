@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -49,7 +48,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <nav className="flex-1 px-4 space-y-2 mt-4">
           {navItems.map((item) => (
-            <Link
+            <a
               key={item.href}
               href={item.href}
               className={`block px-4 py-2 rounded-md transition-colors ${
@@ -59,7 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               }`}
             >
               {item.name}
-            </Link>
+            </a>
           ))}
         </nav>
         <div className="p-4 border-t border-gray-800">
