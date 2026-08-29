@@ -1,4 +1,7 @@
+'use client';
+
 import React from 'react';
+import ScrollAnimate from './ScrollAnimate';
 
 export default function TrustBar() {
   const trustItems = [
@@ -25,14 +28,16 @@ export default function TrustBar() {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {trustItems.map((item, index) => (
-            <div key={index} className="flex flex-col items-center text-center gap-3">
-              <div className="flex-shrink-0">
-                {item.icon}
+            <ScrollAnimate key={index} animation="fade-up" delay={index * 120} duration={500}>
+              <div className="flex flex-col items-center text-center gap-3">
+                <div className="flex-shrink-0">
+                  {item.icon}
+                </div>
+                <span className="text-sm font-medium text-gray-800">
+                  {item.text}
+                </span>
               </div>
-              <span className="text-sm font-medium text-gray-800">
-                {item.text}
-              </span>
-            </div>
+            </ScrollAnimate>
           ))}
         </div>
       </div>

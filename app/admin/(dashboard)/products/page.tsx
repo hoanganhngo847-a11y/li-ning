@@ -1,17 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { adminCategoryTree, getLeafCategories, getCategoryPath, getPrimaryLeafHandle, type AdminCategoryNode } from '../../lib/category-tree';
+import {
+  buildAdminCategoryTree,
+  getLeafCategories,
+  getCategoryPath,
+  getPrimaryLeafHandle,
+  readStoredAdminCategories,
+  type AdminCategoryNode,
+  type StoredAdminCategory,
+} from '../../lib/category-tree';
 import { getProductsForCollection } from '@/app/lib/data/collectionMap';
 import type { Product } from '@/app/lib/types';
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [storedCategories, setStoredCategories] = useState<StoredAdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
-  const [activeParentHandle, setActiveParentHandle] = useState(adminCategoryTree[0]?.handle || '');
-  const activeParent = adminCategoryTree.find((category) => category.handle === activeParentHandle) || adminCategoryTree[0];
+  const categoryTree = buildAdminCategoryTree(storedCategories);
+  const [activeParentHandle, setActiveParentHandle] = useState(categoryTree[0]?.handle || '');
+  const activeParent = categoryTree.find((category) => category.handle === activeParentHandle) || categoryTree[0];
   const [activeGroupHandle, setActiveGroupHandle] = useState(activeParent?.children[0]?.handle || activeParent?.handle || '');
   const activeGroup = activeParent?.children.find((category) => category.handle === activeGroupHandle) || activeParent?.children[0] || activeParent;
   const leafCategories = activeGroup ? (activeGroup.children.length > 0 ? getLeafCategories(activeGroup) : getLeafCategories(activeParent)) : [];
@@ -45,7 +55,16 @@ export default function AdminProducts() {
   };
 
   useEffect(() => {
+    const syncCategories = () => setStoredCategories(readStoredAdminCategories());
+    syncCategories();
+    window.addEventListener('storage', syncCategories);
+    window.addEventListener('li-ning-admin-categories-updated', syncCategories);
     fetchProducts();
+
+    return () => {
+      window.removeEventListener('storage', syncCategories);
+      window.removeEventListener('li-ning-admin-categories-updated', syncCategories);
+    };
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -107,7 +126,7 @@ export default function AdminProducts() {
           <div className="rounded-md border border-gray-200">
             <div className="border-b border-gray-200 px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-500">Danh mục cha</div>
             <div className="max-h-64 overflow-auto p-2">
-              {adminCategoryTree.map((parent) => (
+              {categoryTree.map((parent) => (
                 <button
                   key={parent.handle}
                   type="button"
@@ -189,7 +208,7 @@ export default function AdminProducts() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Đang xem: {activeLeafHandle ? getCategoryPath(activeLeafHandle) : activeGroup ? getCategoryPath(activeGroup.handle) : 'Tất cả sản phẩm'} · {filteredProducts.length} sản phẩm
+        Đang xem: {activeLeafHandle ? getCategoryPath(activeLeafHandle, categoryTree) : activeGroup ? getCategoryPath(activeGroup.handle, categoryTree) : 'Tất cả sản phẩm'} · {filteredProducts.length} sản phẩm
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -222,8 +241,8 @@ export default function AdminProducts() {
                     <td className="px-6 py-4 font-medium text-gray-900 max-w-xs truncate" title={product.title}>
                       {product.title}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={getCategoryPath(getPrimaryLeafHandle(product.collections || []))}>
-                      {getCategoryPath(getPrimaryLeafHandle(product.collections || []))}
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={getCategoryPath(getPrimaryLeafHandle(product.collections || [], categoryTree), categoryTree)}>
+                      {getCategoryPath(getPrimaryLeafHandle(product.collections || [], categoryTree), categoryTree)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{product.sku}</td>
                     <td className="px-6 py-4 text-sm font-medium">

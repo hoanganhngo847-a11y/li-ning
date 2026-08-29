@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Product } from '@/app/lib/types';
 import ProductCard from './ProductCard';
+import ScrollAnimate, { StaggerChildren } from './ScrollAnimate';
 import { cn } from '@/app/lib/utils';
 import { getProductsForCollection } from '@/app/lib/data/collectionMap';
 import { useProductsWithAdminProducts } from '@/app/lib/admin-products';
@@ -35,38 +36,44 @@ export default function HomeTabSection({ title, titleHref, tabs, allProducts }: 
     <section className="py-12 bg-white">
       <div className="container mx-auto px-4">
         {/* Title */}
-        <div className="text-center mb-6">
-          <Link href={titleHref} className="inline-block group">
-            <h2 className="text-2xl md:text-3xl font-bold uppercase text-[#111111] group-hover:text-[#f30d29] transition-colors relative pb-2 after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-16 after:h-1 after:bg-[#f30d29]">
-              {title}
-            </h2>
-          </Link>
-        </div>
+        <ScrollAnimate animation="fade-up" duration={500}>
+          <div className="text-center mb-6">
+            <Link href={titleHref} className="inline-block group">
+              <h2 className="text-2xl md:text-3xl font-bold uppercase text-[#111111] group-hover:text-[#f30d29] transition-colors relative pb-2 after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-16 after:h-1 after:bg-[#f30d29]">
+                {title}
+              </h2>
+            </Link>
+          </div>
+        </ScrollAnimate>
 
         {/* Tabs */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.collectionHandle}
-              onClick={() => setActiveTab(tab.collectionHandle)}
-              className={cn(
-                "px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 border cursor-pointer",
-                activeTab === tab.collectionHandle
-                  ? "bg-[#f30d29] text-white border-[#f30d29]"
-                  : "bg-white text-gray-700 border-gray-300 hover:border-[#f30d29] hover:text-[#f30d29]"
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <ScrollAnimate animation="fade-up" delay={100} duration={400}>
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            {tabs.map((tab) => (
+              <button
+                key={tab.collectionHandle}
+                onClick={() => setActiveTab(tab.collectionHandle)}
+                className={cn(
+                  "px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 border cursor-pointer",
+                  activeTab === tab.collectionHandle
+                    ? "bg-[#f30d29] text-white border-[#f30d29]"
+                    : "bg-white text-gray-700 border-gray-300 hover:border-[#f30d29] hover:text-[#f30d29]"
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </ScrollAnimate>
 
         {/* Product Grid */}
         {displayProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-5 mb-8">
-            {displayProducts.map(product => (
-              <ProductCard key={product.id || product.handle} product={product} />
-            ))}
+            <StaggerChildren animation="fade-up" staggerDelay={70} duration={450}>
+              {displayProducts.map(product => (
+                <ProductCard key={product.id || product.handle} product={product} />
+              ))}
+            </StaggerChildren>
           </div>
         ) : (
           <div className="text-center text-gray-500 py-12">
@@ -75,14 +82,16 @@ export default function HomeTabSection({ title, titleHref, tabs, allProducts }: 
         )}
 
         {/* View All Button */}
-        <div className="text-center">
-          <Link 
-            href={`/collections/${activeTab}`}
-            className="inline-block px-8 py-3 bg-white text-[#111111] border border-[#111111] rounded hover:bg-[#111111] hover:text-white transition-colors text-sm font-bold uppercase"
-          >
-            Xem tất cả
-          </Link>
-        </div>
+        <ScrollAnimate animation="fade-up" duration={400}>
+          <div className="text-center">
+            <Link 
+              href={`/collections/${activeTab}`}
+              className="inline-block px-8 py-3 bg-white text-[#111111] border border-[#111111] rounded hover:bg-[#111111] hover:text-white transition-colors text-sm font-bold uppercase"
+            >
+              Xem tất cả
+            </Link>
+          </div>
+        </ScrollAnimate>
       </div>
     </section>
   );

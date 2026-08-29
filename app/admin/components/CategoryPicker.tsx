@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   adminCategoryTree,
+  buildAdminCategoryTree,
   getAllLeafCategories,
   getCategoryNode,
   getCategoryPath,
@@ -10,6 +11,7 @@ import {
   getFirstLeaf,
   getLeafCategories,
   getPrimaryLeafHandle,
+  readStoredAdminCategories,
   getSelectedLeafHandles,
   type AdminCategoryNode,
 } from '../lib/category-tree';
@@ -19,14 +21,14 @@ interface CategoryPickerProps {
   onChange: (collections: string[]) => void;
 }
 
-function getActiveParent(handle: string) {
-  const node = getCategoryNode(handle);
+function getActiveParent(handle: string, tree: AdminCategoryNode[]) {
+  const node = getCategoryNode(handle, tree);
   const rootHandle = node?.parentHandles[0] || node?.handle;
-  return adminCategoryTree.find((category) => category.handle === rootHandle) || adminCategoryTree[0];
+  return tree.find((category) => category.handle === rootHandle) || tree[0];
 }
 
-function getActiveGroup(parent: AdminCategoryNode, handle: string) {
-  const node = getCategoryNode(handle);
+function getActiveGroup(parent: AdminCategoryNode, handle: string, tree: AdminCategoryNode[]) {
+  const node = getCategoryNode(handle, tree);
   const groupHandle = node?.parentHandles[1] || (node?.parentHandles[0] === parent.handle ? node.handle : '');
   return parent.children.find((category) => category.handle === groupHandle) || parent.children[0] || parent;
 }
@@ -34,27 +36,39 @@ function getActiveGroup(parent: AdminCategoryNode, handle: string) {
 export { getCollectionTagsFromSelected };
 
 export default function CategoryPicker({ selected, onChange }: CategoryPickerProps) {
-  const selectedLeafHandles = useMemo(() => getSelectedLeafHandles(selected), [selected]);
-  const primaryLeafHandle = getPrimaryLeafHandle(selected);
-  const [activeParentHandle, setActiveParentHandle] = useState(() => getActiveParent(primaryLeafHandle)?.handle);
-  const activeParent = adminCategoryTree.find((category) => category.handle === activeParentHandle) || adminCategoryTree[0];
-  const [activeGroupHandle, setActiveGroupHandle] = useState(() => getActiveGroup(activeParent, primaryLeafHandle)?.handle);
+  const [customCategories, setCustomCategories] = useState(() => readStoredAdminCategories());
+  const categoryTree = useMemo(() => buildAdminCategoryTree(customCategories), [customCategories]);
+  const selectedLeafHandles = useMemo(() => getSelectedLeafHandles(selected, categoryTree), [selected, categoryTree]);
+  const primaryLeafHandle = getPrimaryLeafHandle(selected, categoryTree);
+  const [activeParentHandle, setActiveParentHandle] = useState(() => getActiveParent(primaryLeafHandle, adminCategoryTree)?.handle);
+  const activeParent = categoryTree.find((category) => category.handle === activeParentHandle) || categoryTree[0];
+  const [activeGroupHandle, setActiveGroupHandle] = useState(() => getActiveGroup(activeParent, primaryLeafHandle, categoryTree)?.handle);
   const activeGroup = activeParent.children.find((category) => category.handle === activeGroupHandle) || activeParent.children[0] || activeParent;
   const leafCategories = activeGroup.children.length > 0 ? getLeafCategories(activeGroup) : getLeafCategories(activeParent);
   const selectedLeafSet = new Set(selectedLeafHandles);
 
   const selectedPaths = selectedLeafHandles.map((handle) => ({
     handle,
-    path: getCategoryPath(handle),
+    path: getCategoryPath(handle, categoryTree),
   }));
 
   useEffect(() => {
     if (!primaryLeafHandle) return;
-    const nextParent = getActiveParent(primaryLeafHandle);
-    const nextGroup = getActiveGroup(nextParent, primaryLeafHandle);
+    const nextParent = getActiveParent(primaryLeafHandle, categoryTree);
+    const nextGroup = getActiveGroup(nextParent, primaryLeafHandle, categoryTree);
     setActiveParentHandle(nextParent.handle);
     setActiveGroupHandle(nextGroup.handle);
-  }, [primaryLeafHandle]);
+  }, [primaryLeafHandle, categoryTree]);
+
+  useEffect(() => {
+    const syncCategories = () => setCustomCategories(readStoredAdminCategories());
+    window.addEventListener('storage', syncCategories);
+    window.addEventListener('li-ning-admin-categories-updated', syncCategories);
+    return () => {
+      window.removeEventListener('storage', syncCategories);
+      window.removeEventListener('li-ning-admin-categories-updated', syncCategories);
+    };
+  }, []);
 
   const handleParentSelect = (parent: AdminCategoryNode) => {
     setActiveParentHandle(parent.handle);
@@ -73,7 +87,7 @@ export default function CategoryPicker({ selected, onChange }: CategoryPickerPro
     } else {
       nextLeaves.add(leaf.handle);
     }
-    onChange(getCollectionTagsFromSelected(Array.from(nextLeaves)));
+    onChange(getCollectionTagsFromSelected(Array.from(nextLeaves), categoryTree));
   };
 
   const handleQuickPick = (category: AdminCategoryNode) => {
@@ -81,7 +95,7 @@ export default function CategoryPicker({ selected, onChange }: CategoryPickerPro
     handleLeafToggle(firstLeaf);
   };
 
-  const allLeaves = getAllLeafCategories();
+  const allLeaves = getAllLeafCategories(categoryTree);
 
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -101,7 +115,7 @@ export default function CategoryPicker({ selected, onChange }: CategoryPickerPro
             Danh mục cha
           </div>
           <div className="max-h-[360px] overflow-auto p-2">
-            {adminCategoryTree.map((parent) => (
+            {categoryTree.map((parent) => (
               <button
                 key={parent.handle}
                 type="button"
@@ -196,7 +210,7 @@ export default function CategoryPicker({ selected, onChange }: CategoryPickerPro
                 type="button"
                 onClick={() => {
                   const nextLeaves = selectedLeafHandles.filter((leafHandle) => leafHandle !== handle);
-                  onChange(getCollectionTagsFromSelected(nextLeaves));
+                  onChange(getCollectionTagsFromSelected(nextLeaves, categoryTree));
                 }}
                 className="rounded-full border border-red-200 bg-white px-3 py-1 text-left text-xs font-medium text-red-700 hover:bg-red-50"
                 title="Bấm để bỏ danh mục này"
@@ -215,13 +229,13 @@ export default function CategoryPicker({ selected, onChange }: CategoryPickerPro
       <select
         className="sr-only"
         value={selectedLeafHandles[0] || ''}
-        onChange={(event) => onChange(getCollectionTagsFromSelected([event.target.value]))}
+        onChange={(event) => onChange(getCollectionTagsFromSelected([event.target.value], categoryTree))}
         aria-label="Danh mục con"
       >
         <option value="">Chọn danh mục</option>
         {allLeaves.map((leaf) => (
           <option key={leaf.handle} value={leaf.handle}>
-            {getCategoryPath(leaf.handle)}
+            {getCategoryPath(leaf.handle, categoryTree)}
           </option>
         ))}
       </select>

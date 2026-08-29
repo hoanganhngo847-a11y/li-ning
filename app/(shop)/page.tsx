@@ -1,12 +1,12 @@
 import { products } from '@/app/lib/data/products'
 import { collections } from '@/app/lib/data/collections'
 import { banners as heroBanners, sportCategories } from '@/app/lib/data/banners'
-import ProductCard from '@/app/components/ProductCard'
 import HeroSlider from '@/app/components/HeroSlider'
 import SportCategories from '@/app/components/SportCategories'
 import HomeTabSection from '@/app/components/HomeTabSection'
 import TrustBar from '@/app/components/TrustBar'
 import VideoSection from '@/app/components/VideoSection'
+import AnimatedProductSection from '@/app/components/AnimatedProductSection'
 
 export default function Home() {
   const summerCollectionTabs = [
@@ -50,26 +50,19 @@ export default function Home() {
 
       <VideoSection videoId="Peeahrymsc0" />
 
-      <section className="container mx-auto px-4 py-12">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 uppercase">BADMINTON COLLECTION</h2>
-          <a href="/collections/cau-long-2" className="text-[#f30d29] hover:underline">Xem tất cả</a>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {badmintonProducts.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
+      <AnimatedProductSection
+        title="BADMINTON COLLECTION"
+        titleHref="/collections/cau-long-2"
+        products={badmintonProducts}
+        animation="fade-up"
+      />
 
-      <section className="container mx-auto px-4 py-12 bg-[#f7f7f7]">
-        <h2 className="text-2xl font-bold text-center text-gray-900 uppercase mb-8">SẢN PHẨM MỚI</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {latestProducts.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
+      <AnimatedProductSection
+        title="SẢN PHẨM MỚI"
+        products={latestProducts}
+        animation="fade-up"
+        bgClass="bg-[#f7f7f7]"
+      />
 
       <TrustBar />
     </main>
