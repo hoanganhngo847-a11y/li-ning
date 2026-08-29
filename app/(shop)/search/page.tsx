@@ -5,16 +5,18 @@ import { useMemo, Suspense } from 'react'
 import { products } from '@/app/lib/data/products'
 import ProductCard from '@/app/components/ProductCard'
 import Breadcrumb from '@/app/components/Breadcrumb'
+import { useProductsWithAdminProducts } from '@/app/lib/admin-products'
 
 function SearchContent() {
   const searchParams = useSearchParams()
   const query = searchParams.get('q') || ''
+  const { products: allProducts } = useProductsWithAdminProducts(products)
   
   const searchResults = useMemo(() => {
     if (!query.trim()) return []
     const lowerQuery = query.toLowerCase()
-    return products.filter(p => p.title.toLowerCase().includes(lowerQuery))
-  }, [query])
+    return allProducts.filter(p => p.title.toLowerCase().includes(lowerQuery))
+  }, [query, allProducts])
 
   return (
     <div className="container mx-auto px-4 py-8">

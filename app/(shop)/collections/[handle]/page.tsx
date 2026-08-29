@@ -10,6 +10,7 @@ import FilterSidebar from '@/app/components/FilterSidebar'
 import type { FilterState } from '@/app/components/FilterSidebar'
 import SortDropdown from '@/app/components/SortDropdown'
 import Pagination from '@/app/components/Pagination'
+import { useProductsWithAdminProducts } from '@/app/lib/admin-products'
 
 export default function CollectionDetailPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = use(params)
@@ -26,6 +27,7 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ han
   const [currentPage, setCurrentPage] = useState(1)
   const [sortValue, setSortValue] = useState('manual')
   const [filters, setFilters] = useState<FilterState>({})
+  const { products: allProducts } = useProductsWithAdminProducts(products)
   const productsPerPage = 12
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ han
   }, [handle, sortValue])
 
   const collectionProducts = useMemo(() => {
-    let filtered = getProductsForCollection(products, canonicalHandle)
+    let filtered = getProductsForCollection(allProducts, canonicalHandle)
 
     // Apply sidebar filters
     if (filters.gender && filters.gender.length > 0) {
@@ -64,7 +66,7 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ han
     }
 
     return filtered
-  }, [canonicalHandle, sortValue, filters])
+  }, [canonicalHandle, sortValue, filters, allProducts])
 
   const paginatedProducts = collectionProducts.slice((currentPage - 1) * productsPerPage, currentPage * productsPerPage)
   const totalPages = Math.max(1, Math.ceil(collectionProducts.length / productsPerPage))

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, use } from 'react'
+import { useEffect, useState, useMemo, use } from 'react'
 import { products } from '@/app/lib/data/products'
 import { collections } from '@/app/lib/data/collections'
 import Breadcrumb from '@/app/components/Breadcrumb'
@@ -8,25 +8,34 @@ import ProductCard from '@/app/components/ProductCard'
 import { formatPrice, calculateDiscount } from '@/app/lib/utils'
 import { useCart } from '@/app/lib/cart-context'
 import Link from 'next/link'
+import { useProductsWithAdminProducts } from '@/app/lib/admin-products'
 
 export default function ProductDetailPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = use(params)
-  const product = products.find(p => p.handle === handle) || products[0]
+  const { products: allProducts, isLoaded } = useProductsWithAdminProducts(products)
+  const product = allProducts.find(p => p.handle === handle)
   const { addItem } = useCart()
   
-  const [mainImage, setMainImage] = useState(product?.images[0] || '')
+  const [mainImage, setMainImage] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [selectedVariant, setSelectedVariant] = useState(product?.variants[0])
   const [activeTab, setActiveTab] = useState<'desc'|'details'>('desc')
 
+  useEffect(() => {
+    if (!product) return
+    setMainImage(product.images[0] || '')
+    setSelectedVariant(product.variants[0])
+    setQuantity(1)
+  }, [product])
+
   const relatedProducts = useMemo(() => {
     if (!product) return []
     const coll = product.collections?.[0]
-    return products.filter(p => p.collections?.includes(coll) && p.id !== product.id).slice(0, 5)
-  }, [product])
+    return allProducts.filter(p => p.collections?.includes(coll) && p.id !== product.id).slice(0, 5)
+  }, [product, allProducts])
 
   if (!product) {
-    return <div className="container mx-auto px-4 py-12 text-center">Không tìm thấy sản phẩm</div>
+    return <div className="container mx-auto px-4 py-12 text-center">{isLoaded ? 'Không tìm thấy sản phẩm' : 'Đang tải sản phẩm...'}</div>
   }
 
   const collection = collections.find(c => c.handle === product.collections[0])
