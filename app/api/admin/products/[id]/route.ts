@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { buildUniqueHandle, normalizeProductBody } from '../../product-utils';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -33,7 +34,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
     
-    products[index] = { ...products[index], ...body };
+    const normalizedProduct = normalizeProductBody(body, id, products[index]);
+    products[index] = {
+      ...normalizedProduct,
+      handle: buildUniqueHandle(normalizedProduct.handle, products, id),
+    };
     writeFileSync(filePath, JSON.stringify(products, null, 2), 'utf-8');
     
     return NextResponse.json(products[index]);

@@ -2,19 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { adminCategoryTree, getLeafCategories, getCategoryPath, getPrimaryLeafHandle, type AdminCategoryNode } from '../../lib/category-tree';
+import { getProductsForCollection } from '@/app/lib/data/collectionMap';
+import type { Product } from '@/app/lib/types';
 
 export default function AdminProducts() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
+  const [activeParentHandle, setActiveParentHandle] = useState(adminCategoryTree[0]?.handle || '');
+  const activeParent = adminCategoryTree.find((category) => category.handle === activeParentHandle) || adminCategoryTree[0];
+  const [activeGroupHandle, setActiveGroupHandle] = useState(activeParent?.children[0]?.handle || activeParent?.handle || '');
+  const activeGroup = activeParent?.children.find((category) => category.handle === activeGroupHandle) || activeParent?.children[0] || activeParent;
+  const leafCategories = activeGroup ? (activeGroup.children.length > 0 ? getLeafCategories(activeGroup) : getLeafCategories(activeParent)) : [];
+  const [activeLeafHandle, setActiveLeafHandle] = useState('');
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/products');
       if (res.ok) {
-        const data: any[] = await res.json();
+        const data = await res.json() as Product[];
         setProducts(data);
       }
     } catch (error) {
@@ -22,6 +31,18 @@ export default function AdminProducts() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleParentSelect = (parent: AdminCategoryNode) => {
+    setActiveParentHandle(parent.handle);
+    const nextGroup = parent.children[0] || parent;
+    setActiveGroupHandle(nextGroup.handle);
+    setActiveLeafHandle('');
+  };
+
+  const handleGroupSelect = (group: AdminCategoryNode) => {
+    setActiveGroupHandle(group.handle);
+    setActiveLeafHandle('');
   };
 
   useEffect(() => {
@@ -44,7 +65,13 @@ export default function AdminProducts() {
     }
   };
 
-  const filteredProducts = products.filter(p => {
+  const categoryScopedProducts = activeLeafHandle
+    ? getProductsForCollection(products, activeLeafHandle)
+    : activeGroup
+      ? getProductsForCollection(products, activeGroup.handle)
+      : products;
+
+  const filteredProducts = categoryScopedProducts.filter(p => {
     const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase()) || 
                           p.sku.toLowerCase().includes(search.toLowerCase());
     const matchesGender = genderFilter ? p.gender === genderFilter : true;
@@ -58,6 +85,87 @@ export default function AdminProducts() {
         <Link href="/admin/products/new" className="bg-[#f30d29] text-white px-4 py-2 rounded shadow hover:bg-red-700">
           + Thêm sản phẩm
         </Link>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Lọc theo cây danh mục</h2>
+            <p className="text-sm text-gray-500">Chọn danh mục cha, nhóm danh mục rồi danh mục con để xem đúng sản phẩm.</p>
+          </div>
+          {activeLeafHandle && (
+            <button
+              type="button"
+              onClick={() => setActiveLeafHandle('')}
+              className="text-sm font-semibold text-[#f30d29] hover:underline"
+            >
+              Xem cả nhóm
+            </button>
+          )}
+        </div>
+
+        <div className="grid gap-3 xl:grid-cols-[220px_260px_1fr]">
+          <div className="rounded-md border border-gray-200">
+            <div className="border-b border-gray-200 px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-500">Danh mục cha</div>
+            <div className="max-h-64 overflow-auto p-2">
+              {adminCategoryTree.map((parent) => (
+                <button
+                  key={parent.handle}
+                  type="button"
+                  onClick={() => handleParentSelect(parent)}
+                  className={`mb-1 w-full rounded-md px-3 py-2 text-left text-sm transition ${
+                    activeParent?.handle === parent.handle
+                      ? 'bg-[#f30d29] font-semibold text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {parent.title}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-md border border-gray-200">
+            <div className="border-b border-gray-200 px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-500">Nhóm danh mục</div>
+            <div className="max-h-64 overflow-auto p-2">
+              {(activeParent?.children.length ? activeParent.children : activeParent ? [activeParent] : []).map((group) => (
+                <button
+                  key={group.handle}
+                  type="button"
+                  onClick={() => handleGroupSelect(group)}
+                  className={`mb-1 w-full rounded-md px-3 py-2 text-left text-sm transition ${
+                    activeGroup?.handle === group.handle
+                      ? 'bg-gray-950 font-semibold text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {group.title}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-md border border-gray-200">
+            <div className="border-b border-gray-200 px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-500">Danh mục con</div>
+            <div className="grid max-h-64 gap-2 overflow-auto p-2 sm:grid-cols-2 lg:grid-cols-3">
+              {leafCategories.map((leaf) => (
+                <button
+                  key={leaf.handle}
+                  type="button"
+                  onClick={() => setActiveLeafHandle(leaf.handle)}
+                  className={`rounded-md border px-3 py-2 text-left text-sm transition ${
+                    activeLeafHandle === leaf.handle
+                      ? 'border-[#f30d29] bg-red-50 font-semibold text-[#f30d29]'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="block truncate">{leaf.title}</span>
+                  <span className="block text-xs font-normal text-gray-500">{getProductsForCollection(products, leaf.handle).length} sản phẩm</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-4">
@@ -81,6 +189,10 @@ export default function AdminProducts() {
         </select>
       </div>
 
+      <div className="text-sm text-gray-500">
+        Đang xem: {activeLeafHandle ? getCategoryPath(activeLeafHandle) : activeGroup ? getCategoryPath(activeGroup.handle) : 'Tất cả sản phẩm'} · {filteredProducts.length} sản phẩm
+      </div>
+
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="text-center py-10 text-gray-500">Đang tải dữ liệu...</div>
@@ -91,6 +203,7 @@ export default function AdminProducts() {
                 <tr>
                   <th className="px-6 py-3 font-medium">Ảnh</th>
                   <th className="px-6 py-3 font-medium">Tên sản phẩm</th>
+                  <th className="px-6 py-3 font-medium">Danh mục</th>
                   <th className="px-6 py-3 font-medium">SKU</th>
                   <th className="px-6 py-3 font-medium">Giá</th>
                   <th className="px-6 py-3 font-medium">Trạng thái</th>
@@ -109,6 +222,9 @@ export default function AdminProducts() {
                     </td>
                     <td className="px-6 py-4 font-medium text-gray-900 max-w-xs truncate" title={product.title}>
                       {product.title}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={getCategoryPath(getPrimaryLeafHandle(product.collections || []))}>
+                      {getCategoryPath(getPrimaryLeafHandle(product.collections || []))}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{product.sku}</td>
                     <td className="px-6 py-4 text-sm font-medium">
@@ -131,7 +247,7 @@ export default function AdminProducts() {
                 ))}
                 {filteredProducts.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                       Không tìm thấy sản phẩm nào
                     </td>
                   </tr>

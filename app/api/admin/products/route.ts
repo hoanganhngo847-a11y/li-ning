@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-
-function slugify(str: string) {
-  return str
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[đĐ]/g, 'd')
-    .replace(/([^0-9a-z-\s])/g, '')
-    .replace(/(\s+)/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
+import { buildUniqueHandle, normalizeProductBody } from '../product-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,10 +41,10 @@ export async function POST(request: NextRequest) {
     }, 0);
     const newId = (maxId + 1).toString();
 
+    const normalizedProduct = normalizeProductBody(body, newId);
     const newProduct = {
-      ...body,
-      id: newId,
-      handle: slugify(body.title),
+      ...normalizedProduct,
+      handle: buildUniqueHandle(normalizedProduct.handle, products, newId),
     };
 
     products.push(newProduct);

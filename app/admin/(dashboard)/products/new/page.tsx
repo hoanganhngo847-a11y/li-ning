@@ -101,7 +101,7 @@ export default function NewProduct() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Thêm sản phẩm mới</h1>
         <Link href="/admin/products" className="text-gray-600 hover:underline">
@@ -156,10 +156,10 @@ export default function NewProduct() {
           <h2 className="text-lg font-semibold border-b pb-2 mb-4">Giới tính</h2>
           <div className="flex gap-4">
             {[
-              { value: 'nam', label: '👨 Nam' },
-              { value: 'nu', label: '👩 Nữ' },
-              { value: 'unisex', label: '🧑 Unisex' },
-              { value: 'kids', label: '🧒 Trẻ em' },
+              { value: 'nam', label: 'Nam' },
+              { value: 'nu', label: 'Nữ' },
+              { value: 'unisex', label: 'Unisex' },
+              { value: 'kids', label: 'Trẻ em' },
             ].map(opt => (
               <label key={opt.value} className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer transition-colors ${formData.gender === opt.value ? 'bg-red-50 border-[#f30d29] text-[#f30d29] font-semibold' : 'hover:bg-gray-50'}`}>
                 <input type="radio" name="gender" value={opt.value} checked={formData.gender === opt.value} onChange={handleChange} className="hidden" />
@@ -187,7 +187,7 @@ export default function NewProduct() {
                   className="flex-1 p-2 border rounded focus:border-[#f30d29] outline-none"
                 />
                 <label className="px-3 py-2 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700 text-sm whitespace-nowrap">
-                  {uploading === idx ? '⏳ Đang tải...' : '📁 Upload'}
+                  {uploading === idx ? 'Đang tải...' : 'Upload'}
                   <input
                     type="file"
                     accept="image/*"

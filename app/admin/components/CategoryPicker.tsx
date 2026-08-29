@@ -1,275 +1,230 @@
 'use client';
 
-import { useState } from 'react';
-
-export interface CategoryNode {
-  handle: string;
-  label: string;
-  children?: CategoryNode[];
-}
-
-export const categoryTree: CategoryNode[] = [
-  {
-    handle: 'nam-1', label: '👨 NAM', children: [
-      {
-        handle: 'giay-nam-2', label: '👟 Giày Dép Nam', children: [
-          { handle: 'giay-thoi-trang-nam', label: 'Giày thời trang' },
-          { handle: 'giay-chay-bo-nam', label: 'Giày chạy bộ' },
-          { handle: 'giay-cau-long-nam', label: 'Giày cầu lông' },
-          { handle: 'giay-bong-ro-nam', label: 'Giày bóng rổ' },
-          { handle: 'giay-bong-da-nam', label: 'Giày bóng đá' },
-          { handle: 'giay-bong-ban-nam', label: 'Giày bóng bàn' },
-          { handle: 'dep-nam', label: 'Dép' },
-        ]
-      },
-      {
-        handle: 'ao-nam-1', label: '👕 Áo Nam', children: [
-          { handle: 'ao-t-shirt-nam', label: 'Áo T-Shirt' },
-          { handle: 'ao-polo-nam', label: 'Áo Polo' },
-          { handle: 'ao-gio-nam', label: 'Áo Gió' },
-          { handle: 'ao-ni-nam', label: 'Áo Nỉ' },
-          { handle: 'ao-dai-tay-nam', label: 'Áo Dài Tay' },
-          { handle: 'ao-long-vu-nam', label: 'Áo Lông Vũ' },
-        ]
-      },
-      {
-        handle: 'quan-nam-2', label: '👖 Quần Nam', children: [
-          { handle: 'quan-short-nam', label: 'Quần Short' },
-          { handle: 'quan-gio-nam', label: 'Quần Gió' },
-          { handle: 'quan-ni-nam', label: 'Quần Nỉ' },
-        ]
-      },
-      {
-        handle: 'bo-quan-ao-nam', label: '🏃 Bộ Quần Áo Nam', children: [
-          { handle: 'bo-quan-ao-pickleball-nam', label: 'Bộ Pickleball' },
-          { handle: 'bo-quan-ao-cau-long-nam', label: 'Bộ Cầu Lông' },
-          { handle: 'bo-quan-ao-bong-da-nam', label: 'Bộ Bóng Đá' },
-          { handle: 'bo-quan-ao-bong-ro-nam', label: 'Bộ Bóng Rổ' },
-        ]
-      },
-      {
-        handle: 'phu-kien-nam', label: '🎒 Phụ Kiện Nam', children: [
-          { handle: 'mu-nam', label: 'Mũ' },
-          { handle: 'tat-nam', label: 'Tất' },
-          { handle: 'quan-lot-the-thao-nam', label: 'Quần lót thể thao' },
-          { handle: 'balo-tui-xach-nam', label: 'Balo - Túi xách' },
-          { handle: 'binh-nuoc-nam', label: 'Bình nước' },
-          { handle: 'phu-kien-the-thao-nam', label: 'Phụ kiện thể thao' },
-        ]
-      },
-    ]
-  },
-  {
-    handle: 'nu-21', label: '👩 NỮ', children: [
-      {
-        handle: 'giay-nu-2', label: '👟 Giày Dép Nữ', children: [
-          { handle: 'giay-thoi-trang-nu', label: 'Giày thời trang' },
-          { handle: 'giay-chay-bo-nu', label: 'Giày chạy bộ' },
-          { handle: 'giay-cau-long-nu', label: 'Giày cầu lông' },
-          { handle: 'giay-bong-ro-nu', label: 'Giày bóng rổ' },
-          { handle: 'dep-nu', label: 'Dép' },
-        ]
-      },
-      {
-        handle: 'ao-nu-2', label: '👕 Áo Nữ', children: [
-          { handle: 'ao-t-shirt-nu', label: 'Áo T-Shirt' },
-          { handle: 'ao-polo-nu', label: 'Áo Polo' },
-          { handle: 'ao-bra', label: 'Áo Bra' },
-          { handle: 'ao-gio-nu', label: 'Áo Gió' },
-          { handle: 'ao-ni-nu', label: 'Áo Nỉ' },
-          { handle: 'ao-dai-tay-nu', label: 'Áo Dài Tay' },
-          { handle: 'ao-long-vu-nu', label: 'Áo Lông Vũ' },
-        ]
-      },
-      {
-        handle: 'quan-nu-2', label: '👖 Quần Nữ', children: [
-          { handle: 'quan-short-nu', label: 'Quần Short' },
-          { handle: 'quan-gio-nu', label: 'Quần Gió' },
-          { handle: 'quan-ni-nu', label: 'Quần Nỉ' },
-        ]
-      },
-      { handle: 'vay-chan-vay', label: '👗 Váy - Chân Váy' },
-      {
-        handle: 'bo-quan-ao-nu', label: '🏃 Bộ Quần Áo Nữ', children: [
-          { handle: 'bo-quan-ao-pickleball-nu', label: 'Bộ Pickleball' },
-          { handle: 'bo-quan-ao-cau-long-nu', label: 'Bộ Cầu Lông' },
-        ]
-      },
-      {
-        handle: 'phu-kien-nu', label: '🎒 Phụ Kiện Nữ', children: [
-          { handle: 'mu-nu', label: 'Mũ' },
-          { handle: 'tat-nu', label: 'Tất' },
-          { handle: 'balo-tui-xach-nu', label: 'Balo - Túi xách' },
-          { handle: 'phu-kien-the-thao-nu', label: 'Phụ kiện thể thao' },
-        ]
-      },
-    ]
-  },
-  {
-    handle: 'the-thao', label: '🏆 MÔN THỂ THAO', children: [
-      { handle: 'pickleball', label: 'Pickleball' },
-      { handle: 'cau-long-2', label: 'Cầu Lông' },
-      { handle: 'chay-bo-1', label: 'Chạy Bộ' },
-      { handle: 'luyen-tap-1', label: 'Tập Luyện' },
-      { handle: 'bong-ro-2', label: 'Bóng Rổ' },
-      { handle: 'bong-da', label: 'Bóng Đá' },
-      { handle: 'golf-1', label: 'Golf' },
-    ]
-  },
-  {
-    handle: 'thoi-trang', label: '✨ THỜI TRANG', children: [
-      { handle: 'sportlife', label: 'Sportlife' },
-      { handle: 'sportwear', label: 'Sportwear' },
-      { handle: 'isaac', label: 'Isaac' },
-    ]
-  },
-  {
-    handle: 'kids-1', label: '🧒 YOUNG / TRẺ EM', children: [
-      { handle: 'be-trai-7-14-tuoi', label: 'Bé Trai (7-14 tuổi)' },
-      { handle: 'be-gai-7-14-tuoi', label: 'Bé Gái (7-14 tuổi)' },
-      { handle: 'phu-kien-boi', label: 'Phụ Kiện Bơi' },
-    ]
-  },
-  {
-    handle: 'khuyen-mai-sale', label: '🔥 SALE', children: [
-      { handle: 'giam-30', label: 'Giảm 30%' },
-      { handle: 'giam-40', label: 'Giảm 40%' },
-      { handle: 'giam-50', label: 'Giảm 50%' },
-    ]
-  },
-];
-
-// Given a selected leaf handle, collect all ancestor handles
-function getAncestors(handle: string, tree: CategoryNode[], path: string[] = []): string[] | null {
-  for (const node of tree) {
-    if (node.handle === handle) return path;
-    if (node.children) {
-      const result = getAncestors(handle, node.children, [...path, node.handle]);
-      if (result) return result;
-    }
-  }
-  return null;
-}
-
-export function getCollectionTagsFromSelected(selected: string[]): string[] {
-  const allTags = new Set<string>();
-  for (const handle of selected) {
-    allTags.add(handle);
-    const ancestors = getAncestors(handle, categoryTree);
-    if (ancestors) {
-      for (const a of ancestors) allTags.add(a);
-    }
-  }
-  return Array.from(allTags);
-}
-
-interface TreeNodeProps {
-  node: CategoryNode;
-  selected: Set<string>;
-  onToggle: (handle: string) => void;
-  depth: number;
-}
-
-function TreeNode({ node, selected, onToggle, depth }: TreeNodeProps) {
-  const [expanded, setExpanded] = useState(depth < 1);
-  const hasChildren = node.children && node.children.length > 0;
-  const isChecked = selected.has(node.handle);
-
-  // Check if any descendant is selected
-  const hasSelectedDescendant = hasChildren && node.children!.some(c => {
-    if (selected.has(c.handle)) return true;
-    if (c.children) return c.children.some(cc => selected.has(cc.handle));
-    return false;
-  });
-
-  return (
-    <div>
-      <div
-        className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer hover:bg-gray-50 ${depth === 0 ? 'mt-2' : ''}`}
-        style={{ paddingLeft: `${depth * 20 + 8}px` }}
-      >
-        {hasChildren ? (
-          <button
-            type="button"
-            onClick={() => setExpanded(!expanded)}
-            className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-700 text-xs"
-          >
-            {expanded ? '▼' : '▶'}
-          </button>
-        ) : (
-          <span className="w-5" />
-        )}
-        <label className="flex items-center gap-2 cursor-pointer flex-1">
-          <input
-            type="checkbox"
-            checked={isChecked}
-            onChange={() => onToggle(node.handle)}
-            className="w-4 h-4 rounded text-[#f30d29]"
-          />
-          <span className={`text-sm ${depth === 0 ? 'font-bold text-gray-900' : depth === 1 ? 'font-semibold text-gray-700' : 'text-gray-600'}`}>
-            {node.label}
-          </span>
-          {hasSelectedDescendant && !isChecked && (
-            <span className="text-xs text-blue-500">●</span>
-          )}
-        </label>
-      </div>
-      {hasChildren && expanded && (
-        <div>
-          {node.children!.map(child => (
-            <TreeNode key={child.handle} node={child} selected={selected} onToggle={onToggle} depth={depth + 1} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+import { useEffect, useMemo, useState } from 'react';
+import {
+  adminCategoryTree,
+  getAllLeafCategories,
+  getCategoryNode,
+  getCategoryPath,
+  getCollectionTagsFromSelected,
+  getFirstLeaf,
+  getLeafCategories,
+  getPrimaryLeafHandle,
+  getSelectedLeafHandles,
+  type AdminCategoryNode,
+} from '../lib/category-tree';
 
 interface CategoryPickerProps {
   selected: string[];
   onChange: (collections: string[]) => void;
 }
 
-export default function CategoryPicker({ selected, onChange }: CategoryPickerProps) {
-  const selectedSet = new Set(selected);
+function getActiveParent(handle: string) {
+  const node = getCategoryNode(handle);
+  const rootHandle = node?.parentHandles[0] || node?.handle;
+  return adminCategoryTree.find((category) => category.handle === rootHandle) || adminCategoryTree[0];
+}
 
-  const handleToggle = (handle: string) => {
-    const next = new Set(selected);
-    if (next.has(handle)) {
-      next.delete(handle);
-    } else {
-      next.add(handle);
-    }
-    // Recalculate all tags including ancestors
-    onChange(getCollectionTagsFromSelected(Array.from(next)));
+function getActiveGroup(parent: AdminCategoryNode, handle: string) {
+  const node = getCategoryNode(handle);
+  const groupHandle = node?.parentHandles[1] || (node?.parentHandles[0] === parent.handle ? node.handle : '');
+  return parent.children.find((category) => category.handle === groupHandle) || parent.children[0] || parent;
+}
+
+export { getCollectionTagsFromSelected };
+
+export default function CategoryPicker({ selected, onChange }: CategoryPickerProps) {
+  const selectedLeafHandles = useMemo(() => getSelectedLeafHandles(selected), [selected]);
+  const primaryLeafHandle = getPrimaryLeafHandle(selected);
+  const [activeParentHandle, setActiveParentHandle] = useState(() => getActiveParent(primaryLeafHandle)?.handle);
+  const activeParent = adminCategoryTree.find((category) => category.handle === activeParentHandle) || adminCategoryTree[0];
+  const [activeGroupHandle, setActiveGroupHandle] = useState(() => getActiveGroup(activeParent, primaryLeafHandle)?.handle);
+  const activeGroup = activeParent.children.find((category) => category.handle === activeGroupHandle) || activeParent.children[0] || activeParent;
+  const leafCategories = activeGroup.children.length > 0 ? getLeafCategories(activeGroup) : getLeafCategories(activeParent);
+  const selectedLeafSet = new Set(selectedLeafHandles);
+
+  const selectedPaths = selectedLeafHandles.map((handle) => ({
+    handle,
+    path: getCategoryPath(handle),
+  }));
+
+  useEffect(() => {
+    if (!primaryLeafHandle) return;
+    const nextParent = getActiveParent(primaryLeafHandle);
+    const nextGroup = getActiveGroup(nextParent, primaryLeafHandle);
+    setActiveParentHandle(nextParent.handle);
+    setActiveGroupHandle(nextGroup.handle);
+  }, [primaryLeafHandle]);
+
+  const handleParentSelect = (parent: AdminCategoryNode) => {
+    setActiveParentHandle(parent.handle);
+    const firstChild = parent.children[0] || parent;
+    setActiveGroupHandle(firstChild.handle);
   };
 
-  const selectedCount = selected.length;
+  const handleGroupSelect = (group: AdminCategoryNode) => {
+    setActiveGroupHandle(group.handle);
+  };
+
+  const handleLeafToggle = (leaf: AdminCategoryNode) => {
+    const nextLeaves = new Set(selectedLeafHandles);
+    if (nextLeaves.has(leaf.handle)) {
+      nextLeaves.delete(leaf.handle);
+    } else {
+      nextLeaves.add(leaf.handle);
+    }
+    onChange(getCollectionTagsFromSelected(Array.from(nextLeaves)));
+  };
+
+  const handleQuickPick = (category: AdminCategoryNode) => {
+    const firstLeaf = getFirstLeaf(category);
+    handleLeafToggle(firstLeaf);
+  };
+
+  const allLeaves = getAllLeafCategories();
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-lg font-semibold">Danh mục sản phẩm</h2>
-        <span className="text-sm text-gray-500">{selectedCount} danh mục đã chọn</span>
+    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Phân loại danh mục</h2>
+          <p className="text-sm text-gray-500">Chọn đúng danh mục con để sản phẩm tự nằm trong các danh mục cha tương ứng.</p>
+        </div>
+        <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+          {selectedLeafHandles.length} danh mục con
+        </span>
       </div>
-      <div className="max-h-[400px] overflow-y-auto border rounded p-2 bg-gray-50">
-        {categoryTree.map(node => (
-          <TreeNode key={node.handle} node={node} selected={selectedSet} onToggle={handleToggle} depth={0} />
-        ))}
+
+      <div className="grid gap-4 lg:grid-cols-[220px_240px_1fr]">
+        <div className="rounded-md border border-gray-200">
+          <div className="border-b border-gray-200 px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-500">
+            Danh mục cha
+          </div>
+          <div className="max-h-[360px] overflow-auto p-2">
+            {adminCategoryTree.map((parent) => (
+              <button
+                key={parent.handle}
+                type="button"
+                onClick={() => handleParentSelect(parent)}
+                className={`mb-1 flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition ${
+                  activeParent.handle === parent.handle
+                    ? 'bg-[#f30d29] font-semibold text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <span>{parent.title}</span>
+                <span className={activeParent.handle === parent.handle ? 'text-white/80' : 'text-gray-400'}>
+                  {getLeafCategories(parent).length}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-md border border-gray-200">
+          <div className="border-b border-gray-200 px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-500">
+            Nhóm danh mục
+          </div>
+          <div className="max-h-[360px] overflow-auto p-2">
+            {(activeParent.children.length > 0 ? activeParent.children : [activeParent]).map((group) => (
+              <button
+                key={group.handle}
+                type="button"
+                onClick={() => handleGroupSelect(group)}
+                className={`mb-1 flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition ${
+                  activeGroup.handle === group.handle
+                    ? 'bg-gray-900 font-semibold text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <span>{group.title}</span>
+                <span className={activeGroup.handle === group.handle ? 'text-white/70' : 'text-gray-400'}>
+                  {getLeafCategories(group).length}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-md border border-gray-200">
+          <div className="flex items-center justify-between border-b border-gray-200 px-3 py-2">
+            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Danh mục con</span>
+            <button
+              type="button"
+              onClick={() => handleQuickPick(activeGroup)}
+              className="text-xs font-semibold text-[#f30d29] hover:underline"
+            >
+              Chọn mục đầu
+            </button>
+          </div>
+          <div className="grid max-h-[360px] gap-2 overflow-auto p-3 sm:grid-cols-2">
+            {leafCategories.map((leaf) => {
+              const checked = selectedLeafSet.has(leaf.handle);
+              return (
+                <label
+                  key={leaf.handle}
+                  className={`flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2 transition ${
+                    checked
+                      ? 'border-[#f30d29] bg-red-50 text-[#f30d29]'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => handleLeafToggle(leaf)}
+                    className="mt-1 h-4 w-4 accent-[#f30d29]"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold">{leaf.title}</span>
+                    <span className="block text-xs text-gray-500">{leaf.handle}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
       </div>
-      {selectedCount > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
-          {selected.map(tag => (
-            <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 text-xs rounded-full border border-red-200">
-              {tag}
-              <button type="button" onClick={() => {
-                const next = selected.filter(s => s !== tag);
-                onChange(next);
-              }} className="hover:text-red-900">×</button>
-            </span>
-          ))}
+
+      {selectedPaths.length > 0 ? (
+        <div className="mt-4 rounded-md bg-gray-50 p-3">
+          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Đang gắn vào sản phẩm</div>
+          <div className="flex flex-wrap gap-2">
+            {selectedPaths.map(({ handle, path }) => (
+              <button
+                key={handle}
+                type="button"
+                onClick={() => {
+                  const nextLeaves = selectedLeafHandles.filter((leafHandle) => leafHandle !== handle);
+                  onChange(getCollectionTagsFromSelected(nextLeaves));
+                }}
+                className="rounded-full border border-red-200 bg-white px-3 py-1 text-left text-xs font-medium text-red-700 hover:bg-red-50"
+                title="Bấm để bỏ danh mục này"
+              >
+                {path} x
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-md bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+          Chưa chọn danh mục con nào. Sản phẩm cần ít nhất một danh mục con để hiện đúng trên menu.
         </div>
       )}
-    </div>
+
+      <select
+        className="sr-only"
+        value={selectedLeafHandles[0] || ''}
+        onChange={(event) => onChange(getCollectionTagsFromSelected([event.target.value]))}
+        aria-label="Danh mục con"
+      >
+        <option value="">Chọn danh mục</option>
+        {allLeaves.map((leaf) => (
+          <option key={leaf.handle} value={leaf.handle}>
+            {getCategoryPath(leaf.handle)}
+          </option>
+        ))}
+      </select>
+    </section>
   );
 }

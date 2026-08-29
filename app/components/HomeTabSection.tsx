@@ -6,6 +6,7 @@ import { Product } from '@/app/lib/types';
 import ProductCard from './ProductCard';
 import { cn } from '@/app/lib/utils';
 import { getProductsForCollection } from '@/app/lib/data/collectionMap';
+import { useProductsWithAdminProducts } from '@/app/lib/admin-products';
 
 interface Tab {
   label: string;
@@ -22,10 +23,11 @@ interface HomeTabSectionProps {
 
 export default function HomeTabSection({ title, titleHref, tabs, allProducts }: HomeTabSectionProps) {
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.collectionHandle || '');
+  const { products: mergedProducts } = useProductsWithAdminProducts(allProducts);
 
   const displayProducts = useMemo(() => {
-    return getProductsForCollection(allProducts, activeTab).slice(0, 10);
-  }, [activeTab, allProducts]);
+    return getProductsForCollection(mergedProducts, activeTab).slice(0, 10);
+  }, [activeTab, mergedProducts]);
 
   if (!tabs.length) return null;
 

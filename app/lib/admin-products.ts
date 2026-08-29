@@ -36,8 +36,27 @@ export function useProductsWithAdminProducts(staticProducts: Product[]) {
   });
 
   useEffect(() => {
-    const syncProducts = () => {
-      setState({ adminProducts: readAdminProducts(), isLoaded: true });
+    let cancelled = false;
+
+    const syncProducts = async () => {
+      const localProducts = readAdminProducts();
+
+      try {
+        const response = await fetch('/api/admin/products', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load admin products');
+        const apiProducts = await response.json();
+
+        if (!cancelled) {
+          setState({
+            adminProducts: Array.isArray(apiProducts) ? apiProducts.filter(isProductLike) : localProducts,
+            isLoaded: true,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setState({ adminProducts: localProducts, isLoaded: true });
+        }
+      }
     };
 
     syncProducts();
@@ -45,6 +64,7 @@ export function useProductsWithAdminProducts(staticProducts: Product[]) {
     window.addEventListener(ADMIN_PRODUCTS_EVENT, syncProducts);
 
     return () => {
+      cancelled = true;
       window.removeEventListener('storage', syncProducts);
       window.removeEventListener(ADMIN_PRODUCTS_EVENT, syncProducts);
     };

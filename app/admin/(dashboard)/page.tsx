@@ -63,6 +63,23 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Quản trị cây danh mục</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Kiểm tra danh mục cha, nhóm danh mục, danh mục con và toàn bộ sản phẩm đang nằm trong từng mục.
+            </p>
+          </div>
+          <Link
+            href="/admin/categories"
+            className="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+          >
+            Mở trang danh mục
+          </Link>
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900">Sản phẩm mới nhất</h2>

@@ -36,6 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const navItems = [
     { name: 'Dashboard', href: '/admin' },
+    { name: 'Danh mục', href: '/admin/categories' },
     { name: 'Sản phẩm', href: '/admin/products' },
   ];
 
