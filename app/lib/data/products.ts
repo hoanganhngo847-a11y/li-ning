@@ -1,4 +1,5 @@
 import type { Product } from '../types';
+import { supplementalProducts } from './supplementalProducts';
 
 export const products: Product[] = [
   {
@@ -1303,4 +1304,5 @@ export const products: Product[] = [
     sku: 'P-AKLU072-4V',
     available: true
   },
+  ...supplementalProducts,
 ];
