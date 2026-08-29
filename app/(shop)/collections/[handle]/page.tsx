@@ -10,6 +10,7 @@ import FilterSidebar from '@/app/components/FilterSidebar'
 import type { FilterState } from '@/app/components/FilterSidebar'
 import SortDropdown from '@/app/components/SortDropdown'
 import Pagination from '@/app/components/Pagination'
+import ScrollAnimate, { StaggerChildren } from '@/app/components/ScrollAnimate'
 import { useProductsWithAdminProducts } from '@/app/lib/admin-products'
 
 export default function CollectionDetailPage({ params }: { params: Promise<{ handle: string }> }) {
@@ -80,40 +81,53 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ han
     <div className="container mx-auto px-4 py-8">
       <Breadcrumb items={[{ label: collection.title, href: `/collections/${handle}` }]} />
       
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4 uppercase">{collection.title}</h1>
-        {collection.description && <p className="text-gray-600">{collection.description}</p>}
-      </div>
+      <ScrollAnimate animation="fade-up" duration={500}>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-4 uppercase text-[#111111]">{collection.title}</h1>
+          {collection.description && <p className="text-gray-600 max-w-3xl">{collection.description}</p>}
+        </div>
+      </ScrollAnimate>
 
       <div className="flex flex-col md:flex-row gap-8">
         <div className="w-full md:w-1/4">
-          <FilterSidebar onFilterChange={handleFilterChange} />
+          <ScrollAnimate animation="fade-left" duration={500}>
+            <FilterSidebar onFilterChange={handleFilterChange} />
+          </ScrollAnimate>
         </div>
         
         <div className="w-full md:w-3/4">
-          <div className="flex justify-between items-center mb-6">
-            <div className="text-sm text-gray-500">
-              Hiển thị {collectionProducts.length} sản phẩm
+          <ScrollAnimate animation="fade-up" duration={400}>
+            <div className="flex justify-between items-center mb-6 pb-3 border-b border-gray-100">
+              <div className="text-sm text-gray-500 font-medium">
+                Hiển thị <span className="text-[#111111] font-bold">{collectionProducts.length}</span> sản phẩm
+              </div>
+              <SortDropdown value={sortValue} onChange={setSortValue} />
             </div>
-            <SortDropdown value={sortValue} onChange={setSortValue} />
-          </div>
+          </ScrollAnimate>
 
           {collectionProducts.length > 0 ? (
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {paginatedProducts.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+                <StaggerChildren animation="fade-up" staggerDelay={60} duration={450}>
+                  {paginatedProducts.map(product => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </StaggerChildren>
               </div>
               
               {totalPages > 1 && (
-                <div className="mt-8">
-                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
-                </div>
+                <ScrollAnimate animation="fade-up" duration={400}>
+                  <div className="mt-8">
+                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                  </div>
+                </ScrollAnimate>
               )}
             </>
           ) : (
-            <div className="text-center py-12 text-gray-500">Không có sản phẩm nào trong danh mục này.</div>
+            <div className="text-center py-16 text-gray-500 bg-gray-50 rounded-lg">
+              <p className="text-base font-medium">Không có sản phẩm nào trong danh mục này.</p>
+              <p className="text-sm text-gray-400 mt-1">Hãy thử chọn lại bộ lọc khác.</p>
+            </div>
           )}
         </div>
       </div>
