@@ -19,7 +19,7 @@ export const BODY_PRESETS: Record<Gender, Record<BodyPresetId, BodyPresetData>> 
   male: {
     skinny_fat: {
       id: 'skinny_fat',
-      label: 'Skinny fat',
+      label: 'Gầy mỡ bụng',
       description: 'Ít cơ bắp, có mỡ bụng',
       height: 175,
       weight: 67,
@@ -30,8 +30,8 @@ export const BODY_PRESETS: Record<Gender, Record<BodyPresetId, BodyPresetData>> 
     },
     slim: {
       id: 'slim',
-      label: 'Slim',
-      description: 'Thon gọn, thanh thoát',
+      label: 'Thon gọn',
+      description: 'Thanh thoát, mảnh mai',
       height: 175,
       weight: 62,
       chest: 88,
@@ -41,8 +41,8 @@ export const BODY_PRESETS: Record<Gender, Record<BodyPresetId, BodyPresetData>> 
     },
     muscular: {
       id: 'muscular',
-      label: 'Muscular',
-      description: 'Cơ bắp thể thao',
+      label: 'Cơ bắp',
+      description: 'Săn chắc, chuẩn thể thao',
       height: 175,
       weight: 76,
       chest: 104,
@@ -52,8 +52,8 @@ export const BODY_PRESETS: Record<Gender, Record<BodyPresetId, BodyPresetData>> 
     },
     fat: {
       id: 'fat',
-      label: 'Fat',
-      description: 'Đậm đà, tròn trịa',
+      label: 'Đầy đặn',
+      description: 'Đậm người, tròn trịa',
       height: 175,
       weight: 92,
       chest: 112,
@@ -65,7 +65,7 @@ export const BODY_PRESETS: Record<Gender, Record<BodyPresetId, BodyPresetData>> 
   female: {
     skinny_fat: {
       id: 'skinny_fat',
-      label: 'Skinny fat',
+      label: 'Gầy mỡ bụng',
       description: 'Khung nhỏ, tích mỡ bụng dưới',
       height: 165,
       weight: 52,
@@ -76,8 +76,8 @@ export const BODY_PRESETS: Record<Gender, Record<BodyPresetId, BodyPresetData>> 
     },
     slim: {
       id: 'slim',
-      label: 'Slim',
-      description: 'Thon gọn, mảnh mai',
+      label: 'Thon gọn',
+      description: 'Mảnh mai, uyển chuyển',
       height: 165,
       weight: 48,
       chest: 82,
@@ -87,8 +87,8 @@ export const BODY_PRESETS: Record<Gender, Record<BodyPresetId, BodyPresetData>> 
     },
     muscular: {
       id: 'muscular',
-      label: 'Muscular',
-      description: 'Cơ bắp, săn chắc thể thao',
+      label: 'Cơ bắp',
+      description: 'Săn chắc, năng động',
       height: 168,
       weight: 58,
       chest: 90,
@@ -98,8 +98,8 @@ export const BODY_PRESETS: Record<Gender, Record<BodyPresetId, BodyPresetData>> 
     },
     fat: {
       id: 'fat',
-      label: 'Fat',
-      description: 'Đậm người, đầy đặn',
+      label: 'Đầy đặn',
+      description: 'Đậm người, vóc dáng đầy',
       height: 165,
       weight: 72,
       chest: 100,
@@ -111,8 +111,8 @@ export const BODY_PRESETS: Record<Gender, Record<BodyPresetId, BodyPresetData>> 
 };
 
 export const BODY_PRESET_OPTIONS: { id: BodyPresetId; label: string; description: string }[] = [
-  { id: 'skinny_fat', label: 'Skinny fat', description: 'Ít cơ bắp, mỡ bụng' },
-  { id: 'slim', label: 'Slim', description: 'Thon gọn, thanh thoát' },
-  { id: 'muscular', label: 'Muscular', description: 'Cơ bắp thể thao' },
-  { id: 'fat', label: 'Fat', description: 'Đậm đà, tròn trịa' },
+  { id: 'skinny_fat', label: 'Gầy mỡ bụng', description: 'Ít cơ bắp, có mỡ bụng' },
+  { id: 'slim', label: 'Thon gọn', description: 'Thanh thoát, mảnh mai' },
+  { id: 'muscular', label: 'Cơ bắp', description: 'Săn chắc, chuẩn thể thao' },
+  { id: 'fat', label: 'Đầy đặn', description: 'Đậm người, tròn trịa' },
 ];

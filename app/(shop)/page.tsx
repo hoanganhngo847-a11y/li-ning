@@ -2,6 +2,7 @@ import { products } from '@/app/lib/data/products'
 import { collections } from '@/app/lib/data/collections'
 import { banners as heroBanners, sportCategories } from '@/app/lib/data/banners'
 import HeroSlider from '@/app/components/HeroSlider'
+import AiSportsStylistSection from '@/app/components/AiSportsStylistSection'
 import SportCategories from '@/app/components/SportCategories'
 import HomeTabSection from '@/app/components/HomeTabSection'
 import TrustBar from '@/app/components/TrustBar'
@@ -31,6 +32,10 @@ export default function Home() {
   return (
     <main>
       <HeroSlider banners={heroBanners} />
+      
+      {/* LI-NING AI Sports Stylist & 3D Fitting Room Homepage Section */}
+      <AiSportsStylistSection />
+
       <SportCategories categories={sportCategories} />
       
       {/* Product section wrapper with trigger ID for AI Sports Stylist */}

@@ -5,7 +5,9 @@ import { BodyParameters, sanitizeBodyParameters } from './bodyParameters';
 import { MorphController, MorphSemanticKey } from './morphController';
 import { LocalDeformationEngine, DebugMaskRegion } from './localDeformationEngine';
 import { MeasurementGuidesOverlay } from './measurementGuides';
+import { ClothingEngine } from './clothingEngine';
 import { mapMeasurementToInfluences, CALIBRATION_TABLES } from './measurementCalibration';
+import { FittedItem } from '@/app/components/ai-sports-stylist/types';
 
 export interface AvatarControllerCallbacks {
   onLoadStart?: () => void;
@@ -18,6 +20,7 @@ export class AvatarController {
   private currentPreset: BodyPresetId = 'muscular';
   private currentLoadedPath: string | null = null;
   private loadRequestId = 0;
+  private currentSkinTone: string | number = 0xe6b8a2;
 
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
@@ -31,6 +34,7 @@ export class AvatarController {
   public morphController: MorphController;
   public localDeformationEngine: LocalDeformationEngine;
   public measurementGuides: MeasurementGuidesOverlay;
+  public clothingEngine: ClothingEngine;
 
   private currentParameters: BodyParameters | null = null;
 
@@ -47,10 +51,64 @@ export class AvatarController {
     this.localDeformationEngine = new LocalDeformationEngine();
     this.measurementGuides = new MeasurementGuidesOverlay();
     this.scene.add(this.measurementGuides.getGroup());
+
+    this.clothingEngine = new ClothingEngine(this.scene);
   }
 
   /**
-   * Loads the 3D avatar model matching the chosen gender and body preset (Skinny fat, Slim, Muscular, Fat)
+   * Sets the skin tone color in real-time on all avatar meshes
+   */
+  public setSkinTone(colorHex: string | number): void {
+    this.currentSkinTone = colorHex;
+    if (!this.currentModel) return;
+
+    const threeColor = new THREE.Color(colorHex);
+    this.currentModel.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        if (mesh.material) {
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach((mat) => {
+              if (mat instanceof THREE.MeshStandardMaterial) {
+                mat.color.copy(threeColor);
+                mat.roughness = 0.52;
+                mat.metalness = 0.04;
+                mat.needsUpdate = true;
+              }
+            });
+          } else if (mesh.material instanceof THREE.MeshStandardMaterial) {
+            mesh.material.color.copy(threeColor);
+            mesh.material.roughness = 0.52;
+            mesh.material.metalness = 0.04;
+            mesh.material.needsUpdate = true;
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Equips a sportswear item (shirt/shorts) onto the 3D model
+   */
+  public equipClothingItem(item: FittedItem): void {
+    if (this.currentModel) {
+      this.clothingEngine.setBaseAvatarModel(this.currentModel);
+    }
+    const heightMeters = (this.currentParameters?.heightCm || 175) / 100;
+
+    if (item.category === 'top') {
+      this.clothingEngine.equipShirt(item, heightMeters);
+    } else if (item.category === 'bottom') {
+      this.clothingEngine.equipShorts(item, heightMeters);
+    }
+  }
+
+  public clearClothing(): void {
+    this.clothingEngine.clear();
+  }
+
+  /**
+   * Loads the 3D avatar model matching the chosen gender and body preset
    */
   public loadAvatar(
     gender: Gender,
@@ -99,9 +157,8 @@ export class AvatarController {
         this.currentModel = model;
         this.currentLoadedPath = targetModelPath;
 
-        const skinColor = gender === 'female' ? 0xe4b59f : 0xd89b7d;
-
-        // Apply realistic athletic PBR skin material
+        // Apply chosen skin tone material
+        const skinColor = new THREE.Color(this.currentSkinTone);
         model.traverse((child) => {
           if ((child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh;
@@ -112,14 +169,14 @@ export class AvatarController {
               if (Array.isArray(mesh.material)) {
                 mesh.material.forEach((mat) => {
                   if (mat instanceof THREE.MeshStandardMaterial) {
-                    mat.color.setHex(skinColor);
+                    mat.color.copy(skinColor);
                     mat.roughness = 0.52;
                     mat.metalness = 0.04;
                     mat.needsUpdate = true;
                   }
                 });
               } else if (mesh.material instanceof THREE.MeshStandardMaterial) {
-                mesh.material.color.setHex(skinColor);
+                mesh.material.color.copy(skinColor);
                 mesh.material.roughness = 0.52;
                 mesh.material.metalness = 0.04;
                 mesh.material.needsUpdate = true;
@@ -151,7 +208,8 @@ export class AvatarController {
         model.scale.set(this.baseScale, this.baseScale, this.baseScale);
         this.avatarGroup.add(model);
 
-        // Initialize Morph Controller & Local Deformation Engine
+        // Initialize Morph Controller, Local Deformation Engine & Clothing Engine
+        this.clothingEngine.setBaseAvatarModel(model);
         this.morphController.discoverMorphs(model);
         this.localDeformationEngine.initialize(model);
 
@@ -172,12 +230,7 @@ export class AvatarController {
   }
 
   /**
-   * Applies Body Parameters to the 3D avatar with strict parameter separation:
-   * 1. Height: Scales ONLY Y-axis, feet stay grounded at Y=0.
-   * 2. Weight: Global body mass.
-   * 3. Chest: Local ribcage/pectoral deformation ONLY.
-   * 4. Waist: Local mid-torso/abdominal deformation ONLY.
-   * 5. Hips: Local pelvis/glute deformation ONLY.
+   * Applies Body Parameters to the 3D avatar with strict parameter separation
    */
   public applyBodyParameters(
     rawParams: BodyParameters,
@@ -209,7 +262,6 @@ export class AvatarController {
     const heightScaleFactor = params.heightCm / targetRefHeight;
     const actualHeightScaleY = this.baseScale * heightScaleFactor;
 
-    // Strict rule: DO NOT scale model.scale.x or model.scale.z for local measurements
     this.currentModel.scale.set(this.baseScale, actualHeightScaleY, this.baseScale);
     this.currentModel.position.y = this.floorOffsetY * heightScaleFactor;
 
@@ -219,7 +271,7 @@ export class AvatarController {
     this.localDeformationEngine.applyDeformation(params);
 
     // ============================================================
-    // 3. MORPH TARGET INFLUENCES (If model has blend shapes)
+    // 3. MORPH TARGET INFLUENCES
     // ============================================================
     const tables = CALIBRATION_TABLES[this.gender];
     const chestInfluences = mapMeasurementToInfluences(params.chestCm, tables.chest);
@@ -249,6 +301,11 @@ export class AvatarController {
     // ============================================================
     const modelHeightMeters = params.heightCm / 100;
     this.measurementGuides.update(modelHeightMeters, params);
+
+    // ============================================================
+    // 5. UPDATE 3D CLOTHING LAYER SCALE
+    // ============================================================
+    this.clothingEngine.updateScale(modelHeightMeters, params);
   }
 
   public setDebugMaskRegion(region: DebugMaskRegion): void {
@@ -300,5 +357,6 @@ export class AvatarController {
     this.currentModel = null;
     this.measurementGuides.dispose();
     this.scene.remove(this.measurementGuides.getGroup());
+    this.clothingEngine.dispose();
   }
 }

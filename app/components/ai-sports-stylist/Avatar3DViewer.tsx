@@ -3,19 +3,27 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { BodyProfile, toBodyParameters } from './types';
+import { BodyProfile, toBodyParameters, FittingState } from './types';
 import { AvatarController } from '@/app/lib/avatar/avatarController';
 import { calculateBmi } from '@/app/lib/avatar/bodyParameters';
+import { BODY_PRESETS } from '@/app/lib/avatar/bodyPresets';
 import { DebugMaskRegion } from '@/app/lib/avatar/localDeformationEngine';
 
 interface Avatar3DViewerProps {
   profile: BodyProfile;
+  skinTone?: string;
+  fittingState?: FittingState;
   activeHoverRegion?: DebugMaskRegion;
 }
 
 type CameraPreset = 'front' | 'side' | 'back';
 
-export default function Avatar3DViewer({ profile, activeHoverRegion = 'none' }: Avatar3DViewerProps) {
+export default function Avatar3DViewer({
+  profile,
+  skinTone = '#e6b8a2',
+  fittingState,
+  activeHoverRegion = 'none',
+}: Avatar3DViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -255,14 +263,34 @@ export default function Avatar3DViewer({ profile, activeHoverRegion = 'none' }: 
     }
   }, [profile]);
 
-  // 4. Update visual guide lines visibility
+  // 4. Update Skin Tone in Real-Time
+  useEffect(() => {
+    if (avatarControllerRef.current && skinTone) {
+      avatarControllerRef.current.setSkinTone(skinTone);
+    }
+  }, [skinTone]);
+
+  // 5. Update 3D Clothing Fit in Real-Time
+  useEffect(() => {
+    if (avatarControllerRef.current) {
+      avatarControllerRef.current.clearClothing();
+      if (fittingState?.top) {
+        avatarControllerRef.current.equipClothingItem(fittingState.top);
+      }
+      if (fittingState?.bottom) {
+        avatarControllerRef.current.equipClothingItem(fittingState.bottom);
+      }
+    }
+  }, [fittingState]);
+
+  // 6. Update visual guide lines visibility
   useEffect(() => {
     if (avatarControllerRef.current) {
       avatarControllerRef.current.setGuidesVisible(showGuides);
     }
   }, [showGuides]);
 
-  // 5. Update active hover debug mask region
+  // 7. Update active hover debug mask region
   useEffect(() => {
     if (avatarControllerRef.current) {
       avatarControllerRef.current.setDebugMaskRegion(activeHoverRegion);
@@ -282,7 +310,7 @@ export default function Avatar3DViewer({ profile, activeHoverRegion = 'none' }: 
   };
 
   const bmiInfo = calculateBmi(profile.height, profile.weight);
-  const bodyTypeLabel = profile.bodyType.charAt(0).toUpperCase() + profile.bodyType.slice(1);
+  const bodyTypeLabel = BODY_PRESETS[profile.gender][profile.bodyType]?.label || profile.bodyType;
 
   return (
     <div className="relative flex flex-col items-center justify-between w-full h-full bg-gradient-to-b from-gray-50/90 via-white to-gray-100/90 rounded-2xl border border-gray-200 p-4 md:p-6 overflow-hidden select-none">
@@ -291,10 +319,10 @@ export default function Avatar3DViewer({ profile, activeHoverRegion = 'none' }: 
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#f30d29] animate-pulse" />
           <span className="text-xs font-black tracking-widest uppercase text-gray-950">
-            3D DIGITAL ATHLETE
+            MÔ HÌNH 3D VẬN ĐỘNG VIÊN
           </span>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-600 uppercase font-bold">
-            {profile.gender}
+            {profile.gender === 'male' ? 'Nam' : 'Nữ'}
           </span>
         </div>
 
@@ -311,23 +339,27 @@ export default function Avatar3DViewer({ profile, activeHoverRegion = 'none' }: 
                 : 'bg-white/80 text-gray-500 border-gray-200 hover:text-gray-800'
             }`}
           >
-            Guides {showGuides ? 'ON' : 'OFF'}
+            Thước đo 3D: {showGuides ? 'BẬT' : 'TẮT'}
           </button>
 
           {/* Camera Angles: FRONT, SIDE, BACK */}
           <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md p-1 rounded-lg border border-gray-200/90 shadow-2xs">
-            {(['front', 'side', 'back'] as CameraPreset[]).map((preset) => (
+            {[
+              { id: 'front' as CameraPreset, label: 'Trước' },
+              { id: 'side' as CameraPreset, label: 'Ngang' },
+              { id: 'back' as CameraPreset, label: 'Sau' },
+            ].map(({ id, label }) => (
               <button
-                key={preset}
+                key={id}
                 type="button"
-                onClick={() => handlePresetClick(preset)}
+                onClick={() => handlePresetClick(id)}
                 className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${
-                  activePreset === preset
+                  activePreset === id
                     ? 'bg-gray-950 text-white shadow-xs'
                     : 'text-gray-600 hover:text-gray-950 hover:bg-gray-100'
                 }`}
               >
-                {preset}
+                {label}
               </button>
             ))}
           </div>
@@ -342,7 +374,7 @@ export default function Avatar3DViewer({ profile, activeHoverRegion = 'none' }: 
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/85 backdrop-blur-xs z-20">
             <div className="w-10 h-10 border-3 border-gray-200 border-t-[#f30d29] rounded-full animate-spin mb-3" />
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-700">Đang chuẩn bị 3D Avatar...</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-700">Đang tải mô hình 3D...</p>
           </div>
         )}
 
@@ -356,7 +388,7 @@ export default function Avatar3DViewer({ profile, activeHoverRegion = 'none' }: 
             </div>
             <h4 className="text-sm font-bold text-gray-900 mb-1">Cần file 3D Avatar</h4>
             <p className="text-xs text-gray-500 max-w-xs leading-relaxed mb-3">
-              Đặt file <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800 font-mono">male-base.glb</code> vào <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800 font-mono">public/models/avatar/</code>.
+              Đặt file <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800 font-mono">male-base-muscular.glb</code> vào <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800 font-mono">public/models/avatar/</code>.
             </p>
           </div>
         )}
@@ -393,7 +425,7 @@ export default function Avatar3DViewer({ profile, activeHoverRegion = 'none' }: 
               </span>
             </div>
             <div className="flex justify-between items-center gap-3">
-              <span className="text-gray-500 text-[10px]">BMI ({bmiInfo.label})</span>
+              <span className="text-gray-500 text-[10px]">Chỉ số ({bmiInfo.label})</span>
               <span className={`font-bold ${bmiInfo.color}`}>{bmiInfo.value}</span>
             </div>
           </div>
@@ -406,16 +438,15 @@ export default function Avatar3DViewer({ profile, activeHoverRegion = 'none' }: 
             onClick={() => setShowDevDebug(!showDevDebug)}
             className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-black/5 hover:bg-black/10 text-gray-500 transition-all cursor-pointer"
           >
-            Diagnostics {showDevDebug ? '▲' : '▼'}
+            Thông số kỹ thuật {showDevDebug ? '▲' : '▼'}
           </button>
 
           {showDevDebug && (
             <div className="mt-1 p-2 bg-gray-950/90 text-white rounded-lg shadow-xl text-[10px] font-mono max-w-xs space-y-1 backdrop-blur-md">
-              <div className="text-gray-400 font-bold border-b border-gray-800 pb-0.5">DEV DIAGNOSTICS</div>
-              <div>Deformation Engine: <span className="text-emerald-400">Local Vertex Mask (Active)</span></div>
-              <div>Calibration Status: <span className="text-amber-400">Estimated (Anatomical)</span></div>
-              <div>Model Scale X/Z: <span className="text-blue-400">1.0 (Fixed, No Fake Scale)</span></div>
-              <div>Model Scale Y: <span className="text-blue-400">{(profile.height / 175).toFixed(3)} (Global)</span></div>
+              <div className="text-gray-400 font-bold border-b border-gray-800 pb-0.5">CHI TIẾT KỸ THUẬT</div>
+              <div>Động cơ biến dạng: <span className="text-emerald-400">Mặt nạ đỉnh cục bộ (Đang chạy)</span></div>
+              <div>Trạng thái hiệu chuẩn: <span className="text-amber-400">Ước tính chuẩn giải phẫu</span></div>
+              <div>Tỷ lệ chiều cao Y: <span className="text-blue-400">{(profile.height / 175).toFixed(3)}x</span></div>
             </div>
           )}
         </div>

@@ -64,7 +64,7 @@ export default function BodyProfileStep({ profile, onChange, onContinue, onHover
             </span>
           ) : (
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Chuẩn {profile.bodyType}
+              Chuẩn {BODY_PRESETS[profile.gender][profile.bodyType]?.label || profile.bodyType}
             </span>
           )}
         </div>
@@ -94,7 +94,7 @@ export default function BodyProfileStep({ profile, onChange, onContinue, onHover
                       : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:bg-gray-50'
                   }`}
                 >
-                  {g === 'male' ? 'Nam (Male)' : 'Nữ (Female)'}
+                  {g === 'male' ? 'Nam' : 'Nữ'}
                 </button>
               );
             })}
@@ -105,7 +105,7 @@ export default function BodyProfileStep({ profile, onChange, onContinue, onHover
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-700">
-              Dáng người chuẩn (Quick Presets)
+              Dáng người chuẩn (Chọn nhanh)
             </label>
             <span className="text-[10px] text-gray-400">Chọn để điền nhanh</span>
           </div>

@@ -86,18 +86,18 @@ export default function AiSportsStylist({ targetId = 'home-product-section' }: A
               <svg className="w-3 h-3 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2L14.4 8.6L21 11L14.4 13.4L12 20L9.6 13.4L3 11L9.6 8.6L12 2Z" />
               </svg>
-              AI SPORTS STYLIST
+              TƯ VẤN TRANG PHỤC AI
             </span>
           </div>
 
           {/* Title */}
           <h4 className="text-base font-bold text-gray-900 mb-1 leading-snug">
-            Find your perfect LI-NING outfit
+            Tìm trang phục Li-Ning chuẩn vóc dáng
           </h4>
 
           {/* Short Description */}
           <p className="text-xs text-gray-600 mb-4 leading-relaxed">
-            Đề xuất outfit chuẩn xác theo môn thể thao, vóc dáng và phong cách riêng của bạn.
+            Đề xuất trang phục và giày thi đấu chuẩn xác theo môn thể thao, số đo và vóc dáng riêng của bạn.
           </p>
 
           {/* CTA Action Button */}
@@ -105,7 +105,7 @@ export default function AiSportsStylist({ targetId = 'home-product-section' }: A
             onClick={handleTryNow}
             className="w-full flex items-center justify-center gap-2 bg-[#f30d29] hover:bg-[#d10b23] text-white text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 group cursor-pointer"
           >
-            <span>TRY NOW</span>
+            <span>THỬ NGAY</span>
             <svg
               className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1"
               fill="none"
