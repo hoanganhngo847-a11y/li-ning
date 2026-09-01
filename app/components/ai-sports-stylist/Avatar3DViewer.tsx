@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { BodyProfile, toBodyParameters, FittingState } from './types';
@@ -16,7 +16,7 @@ interface Avatar3DViewerProps {
   activeHoverRegion?: DebugMaskRegion;
 }
 
-type CameraPreset = 'front' | 'side' | 'back';
+type CameraPreset = 'all' | 'front' | 'side' | 'back';
 
 export default function Avatar3DViewer({
   profile,
@@ -29,7 +29,6 @@ export default function Avatar3DViewer({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activePreset, setActivePreset] = useState<CameraPreset>('front');
   const [showGuides, setShowGuides] = useState(false);
-  const [showDevDebug, setShowDevDebug] = useState(false);
 
   // Three.js instances refs
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -55,7 +54,7 @@ export default function Avatar3DViewer({
     // --- Scene Setup ---
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    scene.background = new THREE.Color(0xfcfcfc);
+    scene.background = new THREE.Color(0xf8fafc);
 
     // --- Camera Setup ---
     const width = container.clientWidth || 600;
@@ -83,11 +82,11 @@ export default function Avatar3DViewer({
     controlsRef.current = controls;
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
-    controls.enablePan = false; // Disable pan to maintain framing
-    controls.autoRotate = false; // User rotates manually
+    controls.enablePan = false;
+    controls.autoRotate = false;
     controls.minDistance = 1.2;
     controls.maxDistance = 5.0;
-    controls.maxPolarAngle = Math.PI / 2 + 0.04; // Do not go beneath floor
+    controls.maxPolarAngle = Math.PI / 2 + 0.04;
     controls.minPolarAngle = Math.PI / 6;
     controls.target.set(0, 0.90, 0);
     controls.update();
@@ -116,23 +115,23 @@ export default function Avatar3DViewer({
     bounceLight.position.set(0, -2, 0);
     scene.add(bounceLight);
 
-    // --- Floor Podium Grid / Shadow Receiver ---
-    const floorGeometry = new THREE.CylinderGeometry(1.2, 1.25, 0.02, 64);
+    // --- Elevated White Studio Podium Stage ---
+    const floorGeometry = new THREE.CylinderGeometry(1.35, 1.4, 0.08, 64);
     const floorMaterial = new THREE.MeshStandardMaterial({
-      color: 0xeeeeee,
-      roughness: 0.8,
-      metalness: 0.1,
+      color: 0xffffff,
+      roughness: 0.3,
+      metalness: 0.05,
     });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.position.y = -0.01;
+    floor.position.y = -0.04;
     floor.receiveShadow = true;
     scene.add(floor);
 
-    const ringGeometry = new THREE.RingGeometry(1.28, 1.3, 64);
-    const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xe0e0e0, side: THREE.DoubleSide });
+    const ringGeometry = new THREE.RingGeometry(1.42, 1.45, 64);
+    const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xe2e8f0, side: THREE.DoubleSide });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
     ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.001;
+    ring.position.y = 0.002;
     scene.add(ring);
 
     // --- Avatar Controller Instance ---
@@ -151,11 +150,9 @@ export default function Avatar3DViewer({
         if (!isMounted) return;
         setLoading(false);
 
-        // Apply current body parameters with isolated local deformation
         const params = toBodyParameters(profileRef.current);
         avatarController.applyBodyParameters(params);
 
-        // Frame camera based on model height
         const bbox = new THREE.Box3().setFromObject(model);
         const size = bbox.getSize(new THREE.Vector3());
         const centerY = size.y * 0.52;
@@ -263,14 +260,14 @@ export default function Avatar3DViewer({
     }
   }, [profile]);
 
-  // 4. Update Skin Tone in Real-Time
+  // 3. Update Skin Tone in Real-Time
   useEffect(() => {
     if (avatarControllerRef.current && skinTone) {
       avatarControllerRef.current.setSkinTone(skinTone);
     }
   }, [skinTone]);
 
-  // 5. Update 3D Clothing Fit in Real-Time
+  // 4. Update 3D Clothing Fit in Real-Time
   useEffect(() => {
     if (avatarControllerRef.current) {
       avatarControllerRef.current.clearClothing();
@@ -283,29 +280,29 @@ export default function Avatar3DViewer({
     }
   }, [fittingState]);
 
-  // 6. Update visual guide lines visibility
+  // 5. Update visual guide lines visibility
   useEffect(() => {
     if (avatarControllerRef.current) {
       avatarControllerRef.current.setGuidesVisible(showGuides);
     }
   }, [showGuides]);
 
-  // 7. Update active hover debug mask region
+  // 6. Update active hover debug mask region
   useEffect(() => {
     if (avatarControllerRef.current) {
       avatarControllerRef.current.setDebugMaskRegion(activeHoverRegion);
     }
   }, [activeHoverRegion]);
 
-  // 6. Camera Presets (FRONT, SIDE, BACK)
+  // Camera Presets
   const handlePresetClick = (preset: CameraPreset) => {
     setActivePreset(preset);
-    if (preset === 'front') {
-      targetOrbitAngleRef.current = 0; // Front view (0 deg)
+    if (preset === 'front' || preset === 'all') {
+      targetOrbitAngleRef.current = 0;
     } else if (preset === 'side') {
-      targetOrbitAngleRef.current = Math.PI / 2; // Side profile (90 deg)
+      targetOrbitAngleRef.current = Math.PI / 2;
     } else if (preset === 'back') {
-      targetOrbitAngleRef.current = Math.PI; // Rear back view (180 deg)
+      targetOrbitAngleRef.current = Math.PI;
     }
   };
 
@@ -313,50 +310,39 @@ export default function Avatar3DViewer({
   const bodyTypeLabel = BODY_PRESETS[profile.gender][profile.bodyType]?.label || profile.bodyType;
 
   return (
-    <div className="relative flex flex-col items-center justify-between w-full h-full bg-gradient-to-b from-gray-50/90 via-white to-gray-100/90 rounded-2xl border border-gray-200 p-4 md:p-6 overflow-hidden select-none">
+    <div className="relative flex flex-col items-center justify-between w-full h-full bg-[#f8fafc] rounded-3xl border border-gray-100 p-4 md:p-6 overflow-hidden select-none">
       {/* Top Header / Status Bar */}
       <div className="w-full flex items-center justify-between z-10">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#f30d29] animate-pulse" />
-          <span className="text-xs font-black tracking-widest uppercase text-gray-950">
+          <span className="w-2 h-2 rounded-full bg-[#f30d29]" />
+          <span className="text-xs sm:text-sm font-black tracking-wider uppercase text-gray-900">
             MÔ HÌNH 3D VẬN ĐỘNG VIÊN
           </span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-600 uppercase font-bold">
-            {profile.gender === 'male' ? 'Nam' : 'Nữ'}
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gray-200/70 text-gray-700 uppercase">
+            {profile.gender === 'male' ? 'NAM' : 'NỮ'}
           </span>
         </div>
 
-        {/* View Angle Presets & Controls */}
-        <div className="flex items-center gap-1.5">
-          {/* 3D Measurement Guides Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowGuides(!showGuides)}
-            title="Bật/tắt đường số đo 3D"
-            className={`px-2 py-1 text-[10px] font-bold uppercase rounded-md border transition-all cursor-pointer ${
-              showGuides
-                ? 'bg-red-50 text-[#f30d29] border-red-200 shadow-2xs'
-                : 'bg-white/80 text-gray-500 border-gray-200 hover:text-gray-800'
-            }`}
-          >
-            Thước đo 3D: {showGuides ? 'BẬT' : 'TẮT'}
-          </button>
-
-          {/* Camera Angles: FRONT, SIDE, BACK */}
-          <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md p-1 rounded-lg border border-gray-200/90 shadow-2xs">
+        {/* 3D Mode Camera Controls: TẤT / TRƯỚC / NGANG / SAU */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-extrabold uppercase text-gray-700 hidden sm:inline">
+            CHẾ ĐỘ 3D
+          </span>
+          <div className="flex items-center bg-gray-100/90 p-1 rounded-xl border border-gray-200/80">
             {[
-              { id: 'front' as CameraPreset, label: 'Trước' },
-              { id: 'side' as CameraPreset, label: 'Ngang' },
-              { id: 'back' as CameraPreset, label: 'Sau' },
+              { id: 'all' as CameraPreset, label: 'TẤT' },
+              { id: 'front' as CameraPreset, label: 'TRƯỚC' },
+              { id: 'side' as CameraPreset, label: 'NGANG' },
+              { id: 'back' as CameraPreset, label: 'SAU' },
             ].map(({ id, label }) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => handlePresetClick(id)}
-                className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${
+                className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
                   activePreset === id
-                    ? 'bg-gray-950 text-white shadow-xs'
-                    : 'text-gray-600 hover:text-gray-950 hover:bg-gray-100'
+                    ? 'bg-[#f30d29] text-white shadow-xs'
+                    : 'text-gray-600 hover:text-gray-950 hover:bg-white/60'
                 }`}
               >
                 {label}
@@ -366,13 +352,13 @@ export default function Avatar3DViewer({
         </div>
       </div>
 
-      {/* 3D Canvas Mounting Area */}
+      {/* 3D Canvas Center Stage */}
       <div className="relative flex-1 w-full h-full flex items-center justify-center my-1 overflow-hidden">
         <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center" />
 
         {/* Loading Spinner */}
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/85 backdrop-blur-xs z-20">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-xs z-20">
             <div className="w-10 h-10 border-3 border-gray-200 border-t-[#f30d29] rounded-full animate-spin mb-3" />
             <p className="text-xs font-bold uppercase tracking-wider text-gray-700">Đang tải mô hình 3D...</p>
           </div>
@@ -388,75 +374,73 @@ export default function Avatar3DViewer({
             </div>
             <h4 className="text-sm font-bold text-gray-900 mb-1">Cần file 3D Avatar</h4>
             <p className="text-xs text-gray-500 max-w-xs leading-relaxed mb-3">
-              Đặt file <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800 font-mono">male-base-muscular.glb</code> vào <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800 font-mono">public/models/avatar/</code>.
+              Mô hình 3D đang hoạt động ở chế độ giải phẫu tham số.
             </p>
           </div>
         )}
 
-        {/* Realtime Floating Body Information Card */}
-        <div className="absolute top-2 right-2 z-10 bg-white/95 backdrop-blur-md p-3 rounded-xl border border-gray-200/90 shadow-md min-w-[160px]">
-          <div className="space-y-1 text-xs font-mono">
-            <div className="flex justify-between items-center gap-3">
-              <span className="text-gray-500 text-[10px]">Chiều cao</span>
+        {/* Right Floating Stats Card: THÔNG SỐ HIỆN TẠI (Compact Version) */}
+        <div className="absolute top-2 right-2 z-10 bg-white/95 backdrop-blur-md p-2.5 rounded-xl border border-gray-200/80 shadow-md w-[145px] sm:w-[160px]">
+          <div className="text-[9px] font-black uppercase tracking-wider text-gray-600 mb-1.5">
+            THÔNG SỐ HIỆN TẠI
+          </div>
+
+          <div className="space-y-1 text-[10.5px] font-mono">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 text-[9.5px]">Chiều cao</span>
               <span className="font-bold text-gray-950">{profile.height} cm</span>
             </div>
-            <div className="flex justify-between items-center gap-3">
-              <span className="text-gray-500 text-[10px]">Cân nặng</span>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 text-[9.5px]">Cân nặng</span>
               <span className="font-bold text-gray-950">{profile.weight} kg</span>
             </div>
-            <div className="border-t border-gray-100 pt-1 space-y-1">
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-gray-500 text-[10px]">Vòng 1 (Ngực)</span>
+
+            <div className="border-t border-gray-100 pt-1 space-y-0.5">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-[9.5px]">Vòng 1 (Ngực)</span>
                 <span className="font-bold text-[#f30d29]">{profile.chest} cm</span>
               </div>
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-gray-500 text-[10px]">Vòng 2 (Eo)</span>
-                <span className="font-bold text-amber-600">{profile.waist} cm</span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-[9.5px]">Vòng 2 (Eo)</span>
+                <span className="font-bold text-amber-500">{profile.waist} cm</span>
               </div>
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-gray-500 text-[10px]">Vòng 3 (Hông)</span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-[9.5px]">Vòng 3 (Hông)</span>
                 <span className="font-bold text-emerald-600">{profile.hips} cm</span>
               </div>
             </div>
-            <div className="flex justify-between items-center gap-3 pt-1 border-t border-gray-100">
-              <span className="text-gray-500 text-[10px]">Dáng vóc</span>
-              <span className="font-bold text-gray-900">
-                {bodyTypeLabel} {profile.isCustomized && '· Tùy biến'}
-              </span>
+
+            <div className="border-t border-gray-100 pt-1 space-y-0.5">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-[9.5px]">Dáng người</span>
+                <span className="font-bold text-gray-900 text-[10px]">{bodyTypeLabel}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-[9.5px]">BMI</span>
+                <span className="font-bold text-emerald-600">{bmiInfo.value}</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center gap-3">
-              <span className="text-gray-500 text-[10px]">Chỉ số ({bmiInfo.label})</span>
-              <span className={`font-bold ${bmiInfo.color}`}>{bmiInfo.value}</span>
+
+            {/* Health Balance Callout */}
+            <div className="mt-1.5 p-1.5 bg-emerald-50/90 border border-emerald-200/80 rounded-lg text-emerald-800 text-[9px] font-medium leading-tight flex items-start gap-1">
+              <span className="text-emerald-600 font-bold shrink-0">✓</span>
+              <span>Cân đối & khỏe mạnh.</span>
             </div>
           </div>
         </div>
-
-        {/* Developer Diagnostics Toggle & Panel */}
-        <div className="absolute bottom-2 left-2 z-10">
-          <button
-            type="button"
-            onClick={() => setShowDevDebug(!showDevDebug)}
-            className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-black/5 hover:bg-black/10 text-gray-500 transition-all cursor-pointer"
-          >
-            Thông số kỹ thuật {showDevDebug ? '▲' : '▼'}
-          </button>
-
-          {showDevDebug && (
-            <div className="mt-1 p-2 bg-gray-950/90 text-white rounded-lg shadow-xl text-[10px] font-mono max-w-xs space-y-1 backdrop-blur-md">
-              <div className="text-gray-400 font-bold border-b border-gray-800 pb-0.5">CHI TIẾT KỸ THUẬT</div>
-              <div>Động cơ biến dạng: <span className="text-emerald-400">Mặt nạ đỉnh cục bộ (Đang chạy)</span></div>
-              <div>Trạng thái hiệu chuẩn: <span className="text-amber-400">Ước tính chuẩn giải phẫu</span></div>
-              <div>Tỷ lệ chiều cao Y: <span className="text-blue-400">{(profile.height / 175).toFixed(3)}x</span></div>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Bottom Hint */}
-      <div className="w-full text-center z-10 pt-1">
-        <p className="text-[10px] md:text-[11px] font-medium tracking-wide text-gray-400 uppercase select-none">
-          Kéo để xoay 360° • Cuộn để phóng to/thu nhỏ • Chạm 2 ngón tay trên điện thoại
-        </p>
+      {/* Bottom User Controls Guide */}
+      <div className="w-full flex items-center justify-center gap-4 sm:gap-6 text-[10px] sm:text-[11px] font-medium text-gray-400 select-none z-10 pt-1">
+        <span className="flex items-center gap-1">
+          <span>🖱️</span> KÉO ĐỂ XOAY 360°
+        </span>
+        <span className="flex items-center gap-1">
+          <span>🖱️*</span> CUỘN ĐỂ PHÓNG TO/THU NHỎ
+        </span>
+        <span className="flex items-center gap-1 hidden md:flex">
+          <span>👆</span> CHẠM 2 NGÓN TAY TRÊN ĐIỆN THOẠI
+        </span>
       </div>
     </div>
   );

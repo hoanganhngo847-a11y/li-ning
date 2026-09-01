@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="shortsGrad" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#242832"/>
+      <stop offset="100%" stop-color="#0f1115"/>
+    </linearGradient>
+  </defs>
+  <path d="M22 22 L78 22 L84 78 L56 78 L50 42 L44 78 L16 78 Z" fill="url(#shortsGrad)"/>
+  <rect x="22" y="22" width="56" height="8" rx="2" fill="#181a20" stroke="#333846" stroke-width="1"/>
+  <line x1="48" y1="23" x2="48" y2="30" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="52" y1="23" x2="52" y2="30" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M22 34 L18 70" stroke="#f30d29" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M78 34 L82 70" stroke="#f30d29" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M70 66 C73 64, 76 65, 78 63 C75 67, 72 66, 70 66 Z" fill="#ffffff"/>
+</svg>

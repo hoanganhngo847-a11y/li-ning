@@ -105,21 +105,21 @@ export default function StylistConfigurator({ isOpen, onClose }: StylistConfigur
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-full md:w-[88vw] max-w-[1360px] h-[95vh] md:h-[90vh] max-h-[920px] bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-scaleUp"
+        className="relative z-10 w-full md:w-[92vw] max-w-[1400px] h-[96vh] md:h-[92vh] max-h-[940px] bg-white rounded-3xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-scaleUp"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 md:px-8 py-3.5 border-b border-gray-200 bg-white gap-3 md:gap-6 shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 md:px-8 py-3.5 border-b border-gray-100 bg-white gap-3 md:gap-6 shrink-0">
           {/* Left Title */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-[#f30d29] text-white flex items-center justify-center font-black text-xs shadow-sm">
+            <div className="w-8 h-8 rounded-xl bg-[#f30d29] text-white flex items-center justify-center font-black text-xs shadow-sm">
               LN
             </div>
             <div>
               <h2 className="text-xs sm:text-sm md:text-base font-black tracking-tight uppercase text-gray-950">
                 TƯ VẤN TRANG PHỤC AI
               </h2>
-              <p className="text-[10px] md:text-[11px] text-gray-500 font-medium hidden md:block">
-                Cá nhân hóa trang phục theo vóc dáng
+              <p className="text-[10px] md:text-[11px] text-gray-400 font-medium hidden md:block">
+                Cá nhân hóa trang phục theo vóc dáng của bạn
               </p>
             </div>
           </div>
@@ -145,9 +145,9 @@ export default function StylistConfigurator({ isOpen, onClose }: StylistConfigur
 
         {/* Modal Main Body (2-Column Layout) */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 bg-white">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full min-h-[500px]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-full min-h-[500px]">
             {/* Left Interactive Control Panel (5 cols on 12-col grid) */}
-            <div className="lg:col-span-5 xl:col-span-5 order-2 lg:order-1 flex flex-col justify-between bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 md:p-6 shadow-2xs">
+            <div className="lg:col-span-5 xl:col-span-5 order-2 lg:order-1 flex flex-col justify-between bg-white rounded-3xl border border-gray-100 p-4 sm:p-5 md:p-6 shadow-sm">
               {currentStep === 'body' && (
                 <BodyProfileStep
                   profile={profile}
