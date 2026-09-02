@@ -20,6 +20,9 @@ interface SingleUploadZoneProps {
   accentColor?: 'red' | 'blue' | 'emerald';
 }
 
+// Chunk size 2.5MB (Safely beneath Vercel's 4.5MB serverless limit)
+const CHUNK_SIZE = 2.5 * 1024 * 1024;
+
 function SingleUploadZone({
   label,
   sublabel,
@@ -29,7 +32,8 @@ function SingleUploadZone({
   accentColor = 'blue',
 }: SingleUploadZoneProps) {
   const [uploading, setUploading] = useState(false);
-  const [uploadProgressText, setUploadProgressText] = useState('');
+  const [uploadPercent, setUploadPercent] = useState(0);
+  const [uploadStatusText, setUploadStatusText] = useState('');
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [customUrl, setCustomUrl] = useState('');
@@ -56,69 +60,80 @@ function SingleUploadZone({
   const handleFileUpload = async (file: File) => {
     setError('');
     setUploading(true);
-    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-    setUploadProgressText(`Đang tải ${file.name} (${sizeMb} MB)...`);
+    setUploadPercent(0);
+
+    const totalSizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
+    const uploadId = `up-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+
+    setUploadStatusText(`Chuẩn bị tải ${file.name} (${totalSizeMb} MB, ${totalChunks} phần)...`);
 
     try {
-      // Step 1: Attempt direct binary stream upload (Fastest & Most reliable for 3D binary files)
-      try {
-        const streamRes = await fetch('/api/admin/upload', {
+      let finalUrl = '';
+
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(file.size, start + CHUNK_SIZE);
+        const chunkBlob = file.slice(start, end);
+
+        const currentUploadedMb = (end / (1024 * 1024)).toFixed(1);
+        const percent = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+        setUploadPercent(percent);
+        setUploadStatusText(
+          `Đang tải phần ${chunkIndex + 1}/${totalChunks} (${currentUploadedMb} MB / ${totalSizeMb} MB) • ${percent}%`
+        );
+
+        const res = await fetch('/api/admin/upload-chunk', {
           method: 'POST',
           headers: {
-            'x-filename': encodeURIComponent(file.name),
             'content-type': 'application/octet-stream',
+            'x-upload-id': uploadId,
+            'x-chunk-index': chunkIndex.toString(),
+            'x-total-chunks': totalChunks.toString(),
+            'x-filename': encodeURIComponent(file.name),
           },
-          body: file,
+          body: chunkBlob,
         });
 
-        if (streamRes.ok) {
-          const rawText = await streamRes.text();
-          let data: any;
-          try {
-            data = JSON.parse(rawText);
-          } catch {
-            data = { url: rawText };
-          }
-          if (data && data.url) {
-            onChange(data.url);
-            setUploading(false);
-            setUploadProgressText('');
-            return;
-          }
+        const rawText = await res.text();
+        let resJson: any;
+        try {
+          resJson = JSON.parse(rawText);
+        } catch {
+          resJson = { error: rawText.slice(0, 150) };
         }
-      } catch (streamErr) {
-        console.warn('Direct stream upload attempt failed, falling back to FormData:', streamErr);
+
+        if (!res.ok) {
+          throw new Error(resJson.error || `Lỗi tải phần ${chunkIndex + 1} (HTTP ${res.status})`);
+        }
+
+        if (resJson.done && resJson.url) {
+          finalUrl = resJson.url;
+        }
       }
 
-      // Step 2: Fallback to FormData Multipart Upload
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const formRes = await fetch('/api/admin/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const responseText = await formRes.text();
-      let resData: any = {};
-      try {
-        resData = JSON.parse(responseText);
-      } catch {
-        resData = { error: responseText.slice(0, 100) };
-      }
-
-      if (formRes.ok && resData.url) {
-        onChange(resData.url);
+      if (finalUrl) {
+        onChange(finalUrl);
+        setUploadStatusText('✓ Tải lên và ghép file 3D thành công!');
       } else {
-        setError(resData.error || `Upload thất bại (Mã lỗi HTTP: ${formRes.status})`);
+        throw new Error('Chưa nhận được URL file sau khi hoàn tất');
       }
     } catch (err: any) {
-      console.error('Client upload exception:', err);
-      setError(err?.message ? `Lỗi: ${err.message}` : 'Lỗi kết nối khi tải file 3D lên máy chủ');
+      console.error('Upload Error:', err);
+      setError(
+        err?.message || 'Có lỗi xảy ra khi tải file 3D lên máy chủ. Bạn cũng có thể dùng nút "Link URL" để gắn link trực tiếp.'
+      );
     } finally {
       setUploading(false);
-      setUploadProgressText('');
+      setTimeout(() => {
+        setUploadPercent(0);
+        setUploadProgressText('');
+      }, 3000);
     }
+  };
+
+  const setUploadProgressText = (text: string) => {
+    setUploadStatusText(text);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -166,12 +181,12 @@ function SingleUploadZone({
       </div>
 
       {error && (
-        <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold rounded-xl flex items-start justify-between gap-2">
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-xl flex items-start justify-between gap-2">
           <span>✕ {error}</span>
           <button
             type="button"
             onClick={() => setError('')}
-            className="text-red-400 hover:text-red-700 font-bold px-1"
+            className="text-red-400 hover:text-red-700 font-bold px-1 text-sm"
           >
             ×
           </button>
@@ -180,7 +195,7 @@ function SingleUploadZone({
 
       {/* Value State */}
       {value ? (
-        <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-2">
+        <div className="p-3.5 bg-white rounded-xl border border-gray-200 space-y-2 shadow-2xs">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <div className="font-bold text-gray-900 text-xs truncate max-w-[220px]" title={fileName}>
@@ -198,19 +213,19 @@ function SingleUploadZone({
               </div>
             </div>
 
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <a
                 href={value}
                 target="_blank"
                 rel="noreferrer"
-                className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-[10.5px] font-bold"
+                className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold"
               >
                 Tải ↗
               </a>
               <button
                 type="button"
                 onClick={() => onChange('')}
-                className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-[10.5px] font-bold cursor-pointer"
+                className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-xs font-bold cursor-pointer"
               >
                 Gỡ
               </button>
@@ -227,61 +242,78 @@ function SingleUploadZone({
             }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
-            className={`p-4 border-2 border-dashed rounded-xl text-center transition-all flex flex-col items-center justify-center gap-2 ${
+            className={`p-5 border-2 border-dashed rounded-xl text-center transition-all flex flex-col items-center justify-center gap-2 ${
               dragOver
                 ? 'border-[#f30d29] bg-red-50/50 scale-[0.99]'
                 : 'border-gray-300 hover:border-gray-400 bg-white'
             }`}
           >
-            <span className="text-xl opacity-80">{icon}</span>
-            <div className="text-xs font-bold text-gray-800">
-              {uploading ? uploadProgressText || 'Đang tải file 3D lên...' : 'Kéo thả file 3D (.glb, .gltf, .obj...)'}
-            </div>
+            <span className="text-2xl opacity-85">{icon}</span>
 
-            <div className="flex items-center gap-2 pt-1">
-              <label className="px-3 py-1.5 bg-[#111111] hover:bg-black text-white rounded-lg text-[11px] font-bold uppercase tracking-wider cursor-pointer shadow-xs transition-all flex items-center gap-1.5">
-                {uploading ? (
-                  <>
-                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
-                    <span>Đang xử lý...</span>
-                  </>
-                ) : (
-                  'Chọn file từ máy'
-                )}
-                <input
-                  type="file"
-                  accept=".glb,.gltf,.usdz,.obj,.fbx,.stl,.zip"
-                  className="hidden"
-                  disabled={uploading}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file);
-                  }}
-                />
-              </label>
+            {/* Upload Progress Bar if Uploading */}
+            {uploading ? (
+              <div className="w-full max-w-xs space-y-2 py-1">
+                <div className="flex items-center justify-between text-[11px] font-bold text-gray-800">
+                  <span className="truncate max-w-[180px]">{uploadStatusText}</span>
+                  <span className="font-mono text-[#f30d29]">{uploadPercent}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-[#f30d29] h-2 rounded-full transition-all duration-200"
+                    style={{ width: `${uploadPercent}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="text-xs font-bold text-gray-900">
+                  Kéo thả file 3D (.glb, .gltf, .obj...)
+                </div>
+                <div className="text-[10.5px] text-gray-400 mt-0.5">
+                  Tự động cắt nhỏ upload phân đoạn (Hỗ trợ file dung lượng lớn 50MB - 100MB+)
+                </div>
+              </div>
+            )}
 
-              <button
-                type="button"
-                onClick={() => setShowUrlInput(!showUrlInput)}
-                className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
-              >
-                {showUrlInput ? 'Ẩn URL' : 'Link URL'}
-              </button>
-            </div>
+            {!uploading && (
+              <div className="flex items-center gap-2 pt-1">
+                <label className="px-3.5 py-1.5 bg-[#111111] hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer shadow-xs transition-all flex items-center gap-1.5">
+                  <span>Chọn file từ máy</span>
+                  <input
+                    type="file"
+                    accept=".glb,.gltf,.usdz,.obj,.fbx,.stl,.zip"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(file);
+                    }}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setShowUrlInput(!showUrlInput)}
+                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  {showUrlInput ? 'Ẩn URL' : 'Link URL'}
+                </button>
+              </div>
+            )}
           </div>
 
           {showUrlInput && (
-            <form onSubmit={handleApplyUrl} className="flex gap-1.5 p-2 bg-white rounded-xl border border-gray-200">
+            <form onSubmit={handleApplyUrl} className="flex gap-1.5 p-2 bg-white rounded-xl border border-gray-200 shadow-2xs">
               <input
                 type="text"
                 value={customUrl}
                 onChange={(e) => setCustomUrl(e.target.value)}
-                placeholder="https://.../model.glb"
-                className="flex-1 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[11px] font-mono text-gray-900 outline-none focus:border-[#f30d29]"
+                placeholder="https://.../model.glb hoặc link Cloud 3D..."
+                className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono text-gray-900 outline-none focus:border-[#f30d29]"
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-gray-900 hover:bg-black text-white rounded-lg text-[11px] font-bold cursor-pointer shrink-0"
+                className="px-3.5 py-1.5 bg-gray-900 hover:bg-black text-white rounded-lg text-xs font-bold cursor-pointer shrink-0"
               >
                 Áp dụng
               </button>
@@ -364,7 +396,7 @@ export default function Product3DUploader({
             )}
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
-            Đối với sản phẩm là <strong>Bộ quần áo</strong>, hỗ trợ upload 2 file mô hình 3D riêng biệt cho <strong>Áo</strong> và <strong>Quần</strong> để khách hàng xoay 360° từng trang phục
+            Hỗ trợ upload file 3D dung lượng lớn (50MB - 100MB+) với công nghệ cắt nhỏ phân đoạn (Chunked Upload) tự động
           </p>
         </div>
 
@@ -432,10 +464,10 @@ export default function Product3DUploader({
 
       {/* Info footer */}
       <div className="pt-2 flex items-center justify-between text-[11px] text-gray-400">
-        <span>* Định dạng khuyên dùng: .glb hoặc .gltf (Hỗ trợ dung lượng lớn đến 100MB)</span>
+        <span>* Định dạng khuyên dùng: .glb hoặc .gltf • Tự động vượt giới hạn Vercel 4.5MB bằng Chunked Stream</span>
         {(model3d || model3dTop || model3dBottom) && (
           <span className="font-bold text-emerald-600 flex items-center gap-1">
-            <span>●</span> Đã sẵn sàng hiển thị chế độ 3D trên storefront
+            <span>●</span> Đã sẵn sàng hiển thị chế độ 3D trên website
           </span>
         )}
       </div>
