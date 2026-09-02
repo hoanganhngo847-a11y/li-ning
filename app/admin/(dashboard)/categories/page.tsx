@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   buildAdminCategoryTree,
   flattenCategories,
   getFirstLeaf,
   getLeafCategories,
+  getProductCategoryTreePaths,
   readStoredAdminCategories,
   slugifyCategoryTitle,
   writeStoredAdminCategories,
@@ -15,6 +17,7 @@ import {
 import { getProductsForCollection } from '@/app/lib/data/collectionMap';
 import { formatPrice } from '@/app/lib/utils';
 import type { Product } from '@/app/lib/types';
+import ProductCategoriesModal from '../../components/ProductCategoriesModal';
 
 function getProductCount(products: Product[], handle: string) {
   return getProductsForCollection(products, handle).length;
@@ -29,14 +32,34 @@ export default function AdminCategoriesPage() {
   const [categoryHandle, setCategoryHandle] = useState('');
   const [formMessage, setFormMessage] = useState('');
   const [formError, setFormError] = useState('');
+  const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
+
   const categoryTree = useMemo(() => buildAdminCategoryTree(storedCategories), [storedCategories]);
-  const [activeParentHandle, setActiveParentHandle] = useState(categoryTree[0]?.handle || '');
+  const [activeParentHandle, setActiveParentHandle] = useState<string>(categoryTree[0]?.handle || 'the-thao');
   const activeParent = categoryTree.find((category) => category.handle === activeParentHandle) || categoryTree[0];
-  const [activeGroupHandle, setActiveGroupHandle] = useState(activeParent?.children[0]?.handle || activeParent?.handle || '');
-  const activeGroup = activeParent?.children.find((category) => category.handle === activeGroupHandle) || activeParent?.children[0] || activeParent;
-  const leafCategories = activeGroup ? (activeGroup.children.length > 0 ? getLeafCategories(activeGroup) : getLeafCategories(activeParent)) : [];
-  const [activeLeafHandle, setActiveLeafHandle] = useState(getFirstLeaf(activeGroup || activeParent)?.handle || '');
-  const activeLeaf = leafCategories.find((category) => category.handle === activeLeafHandle) || leafCategories[0] || activeGroup;
+  const [activeGroupHandle, setActiveGroupHandle] = useState<string>(
+    activeParent?.children[0]?.handle || activeParent?.handle || ''
+  );
+  const activeGroup =
+    activeParent?.children.find((category) => category.handle === activeGroupHandle) ||
+    activeParent?.children[0] ||
+    activeParent;
+
+  const leafCategories = activeGroup
+    ? activeGroup.children.length > 0
+      ? getLeafCategories(activeGroup)
+      : [activeGroup]
+    : activeParent
+      ? getLeafCategories(activeParent)
+      : [];
+
+  const [activeLeafHandle, setActiveLeafHandle] = useState<string>(
+    getFirstLeaf(activeGroup || activeParent)?.handle || ''
+  );
+  const activeLeaf =
+    leafCategories.find((category) => category.handle === activeLeafHandle) ||
+    leafCategories[0] ||
+    activeGroup;
 
   useEffect(() => {
     setStoredCategories(readStoredAdminCategories());
@@ -45,7 +68,7 @@ export default function AdminCategoriesPage() {
       try {
         const res = await fetch('/api/admin/products');
         if (res.ok) {
-          const data = await res.json() as Product[];
+          const data = (await res.json()) as Product[];
           setProducts(data);
         }
       } finally {
@@ -63,7 +86,10 @@ export default function AdminCategoriesPage() {
     return { parentCount, groupCount, leafCount };
   }, [categoryTree]);
 
-  const selectedProducts = activeLeaf ? getProductsForCollection(products, activeLeaf.handle) : [];
+  // Current products in active node
+  const activeHandle = activeLeaf?.handle || activeGroup?.handle || activeParent?.handle;
+  const selectedProducts = activeHandle ? getProductsForCollection(products, activeHandle) : [];
+
 
   const handleParentSelect = (parent: AdminCategoryNode) => {
     setActiveParentHandle(parent.handle);
@@ -89,7 +115,9 @@ export default function AdminCategoriesPage() {
 
     const title = categoryTitle.trim();
     const handle = slugifyCategoryTitle(categoryHandle || title);
-    const existingHandles = new Set(flattenCategories(categoryTree).map((category) => category.handle));
+    const existingHandles = new Set(
+      flattenCategories(categoryTree).map((category) => category.handle)
+    );
 
     if (!title) {
       setFormError('Vui lòng nhập tên danh mục.');
@@ -106,7 +134,13 @@ export default function AdminCategoriesPage() {
       return;
     }
 
-    const parentHandle = createType === 'parent' ? null : createType === 'group' ? activeParent?.handle : activeGroup?.handle;
+    const parentHandle =
+      createType === 'parent'
+        ? null
+        : createType === 'group'
+          ? activeParent?.handle
+          : activeGroup?.handle;
+
     if (createType !== 'parent' && !parentHandle) {
       setFormError('Vui lòng chọn danh mục cha hoặc nhóm danh mục trước.');
       return;
@@ -119,12 +153,14 @@ export default function AdminCategoriesPage() {
       parentHandle: parentHandle || null,
       createdAt: Date.now(),
     };
-    const nextCategories = [...storedCategories, nextCategory];
-    setStoredCategories(nextCategories);
-    writeStoredAdminCategories(nextCategories);
+
+    const nextList = [...storedCategories, nextCategory];
+    setStoredCategories(nextList);
+    writeStoredAdminCategories(nextList);
+
     setCategoryTitle('');
     setCategoryHandle('');
-    setFormMessage(`Đã thêm ${createType === 'parent' ? 'danh mục cha' : createType === 'group' ? 'nhóm danh mục' : 'danh mục con'} "${title}".`);
+    setFormMessage(`Đã thêm danh mục "${title}" thành công!`);
 
     if (createType === 'parent') {
       setActiveParentHandle(handle);
@@ -138,242 +174,341 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  const createContextLabel = createType === 'parent'
-    ? 'Tạo ở cấp cao nhất'
-    : createType === 'group'
-      ? `Nằm trong danh mục cha: ${activeParent?.title || ''}`
-      : `Nằm trong nhóm danh mục: ${activeGroup?.title || ''}`;
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-[#f30d29]">Sơ đồ danh mục</p>
-          <h1 className="mt-1 text-2xl font-bold text-gray-950">Danh mục cha, danh mục con và sản phẩm</h1>
-          <p className="mt-2 max-w-3xl text-sm text-gray-600">
-            Chọn từng lớp danh mục để kiểm tra sản phẩm đang nằm trong danh mục con nào trên website.
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-mono font-bold uppercase tracking-wider mb-2">
+            Cây Phân Cấp Menu • lining.id.vn
+          </div>
+          <h1 className="text-2xl font-black text-gray-950 uppercase tracking-tight">
+            QUẢN TRỊ CÂY DANH MỤC (3 CẤP)
+          </h1>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Cấu trúc danh mục menu chuẩn: Môn Thể Thao, Thời Trang, Young, Nam, Nữ, Sale &amp; Tra cứu chi tiết phân bổ danh mục của từng sản phẩm
           </p>
         </div>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="text-sm text-gray-500">Danh mục cha</div>
-          <div className="mt-1 text-3xl font-bold text-gray-950">{summary.parentCount}</div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="text-sm text-gray-500">Nhóm danh mục</div>
-          <div className="mt-1 text-3xl font-bold text-gray-950">{summary.groupCount}</div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="text-sm text-gray-500">Danh mục con</div>
-          <div className="mt-1 text-3xl font-bold text-gray-950">{summary.leafCount}</div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="text-sm text-gray-500">Sản phẩm</div>
-          <div className="mt-1 text-3xl font-bold text-[#f30d29]">{products.length}</div>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/products"
+            className="bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+          >
+            Quản lý sản phẩm &rarr;
+          </Link>
         </div>
       </div>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+      {/* KPI Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400">1. Danh mục lớn</div>
+          <div className="text-2xl font-black text-gray-900 font-mono mt-1">{summary.parentCount}</div>
+          <div className="text-[10.5px] text-gray-500 mt-0.5">Môn Thể Thao, Nam, Nữ...</div>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400">2. Nhóm danh mục</div>
+          <div className="text-2xl font-black text-blue-600 font-mono mt-1">{summary.groupCount}</div>
+          <div className="text-[10.5px] text-gray-500 mt-0.5">Cầu lông, Pickleball, Giày...</div>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400">3. Danh mục con</div>
+          <div className="text-2xl font-black text-emerald-600 font-mono mt-1">{summary.leafCount}</div>
+          <div className="text-[10.5px] text-gray-500 mt-0.5">Phân loại chi tiết</div>
+        </div>
+      </div>
+
+      {/* 3-Column Interactive Category Navigator */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-2xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#f30d29]" />
+            ĐIỀU HƯỚNG CÂY DANH MỤC MENU
+          </h2>
+          <div className="text-xs font-bold text-gray-600">
+            Mục đang chọn: <span className="text-[#f30d29] font-mono">{activeLeaf?.title}</span>
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Level 1 */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-3 flex flex-col">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2 flex items-center justify-between">
+              <span>Cấp 1: Danh mục lớn</span>
+              <span className="text-[10px] font-mono text-gray-400">Parent</span>
+            </div>
+            <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+              {categoryTree.map((parent) => {
+                const isSelected = activeParent?.handle === parent.handle;
+                const count = getProductCount(products, parent.handle);
+                return (
+                  <button
+                    key={parent.handle}
+                    type="button"
+                    onClick={() => handleParentSelect(parent)}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
+                      isSelected
+                        ? 'bg-[#f30d29] text-white shadow-xs'
+                        : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span>{parent.title}</span>
+                    <span className="text-[10px] font-mono opacity-80">{count} SP</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Level 2 */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-3 flex flex-col">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2 flex items-center justify-between">
+              <span>Cấp 2: Nhóm thuộc {activeParent?.title}</span>
+              <span className="text-[10px] font-mono text-gray-400">Group</span>
+            </div>
+            <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+              {(activeParent?.children || []).map((group) => {
+                const isSelected = activeGroup?.handle === group.handle;
+                const count = getProductCount(products, group.handle);
+                return (
+                  <button
+                    key={group.handle}
+                    type="button"
+                    onClick={() => handleGroupSelect(group)}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
+                      isSelected
+                        ? 'bg-gray-950 text-white shadow-xs'
+                        : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span>{group.title}</span>
+                    <span className="text-[10px] font-mono opacity-80">{count} SP</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Level 3 */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-3 flex flex-col">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2 flex items-center justify-between">
+              <span>Cấp 3: Danh mục con chi tiết</span>
+              <span className="text-[10px] font-mono text-gray-400">Child</span>
+            </div>
+            <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+              {leafCategories.length === 0 ? (
+                <div className="p-4 text-center text-xs text-gray-400 font-medium">
+                  Không có danh mục con riêng
+                </div>
+              ) : (
+                leafCategories.map((leaf) => {
+                  const isSelected = activeLeaf?.handle === leaf.handle;
+                  const count = getProductCount(products, leaf.handle);
+                  return (
+                    <button
+                      key={leaf.handle}
+                      type="button"
+                      onClick={() => setActiveLeafHandle(leaf.handle)}
+                      className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-red-50 text-[#f30d29] border border-[#f30d29] shadow-2xs font-black'
+                          : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="truncate">{leaf.title}</span>
+                      <span className="text-[10px] font-mono opacity-80">{count} SP</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Product List In Selected Category with Multi-Category Inspector Tags */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
           <div>
-            <h2 className="text-lg font-semibold text-gray-950">Thêm danh mục mới</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Chọn cấp cần tạo, nhập tên danh mục, hệ thống sẽ tự tạo handle để dùng cho trang collection.
+            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-900 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              SẢN PHẨM THUỘC MỤC: {activeLeaf?.title}
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Đường dẫn menu: <strong className="text-gray-800">{[...activeLeaf.parentTitles, activeLeaf.title].join(' → ')}</strong>
             </p>
           </div>
-          <div className="flex rounded-md border border-gray-200 bg-gray-50 p-1">
-            {[
-              { value: 'parent', label: 'Danh mục cha' },
-              { value: 'group', label: 'Nhóm danh mục' },
-              { value: 'child', label: 'Danh mục con' },
-            ].map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setCreateType(item.value as 'parent' | 'group' | 'child')}
-                className={`rounded px-3 py-2 text-sm font-semibold transition ${
-                  createType === item.value ? 'bg-[#f30d29] text-white shadow-sm' : 'text-gray-600 hover:bg-white'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium">Tổng sản phẩm:</span>
+            <span className="text-sm font-black font-mono text-gray-900 bg-gray-100 px-3 py-1 rounded-xl border border-gray-200">
+              {selectedProducts.length}
+            </span>
           </div>
         </div>
 
-        <form onSubmit={handleCreateCategory} className="grid gap-4 xl:grid-cols-[1fr_1fr_auto]">
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">Tên danh mục</span>
-            <input
-              type="text"
-              value={categoryTitle}
-              onChange={(event) => handleTitleChange(event.target.value)}
-              placeholder="Ví dụ: Giày tennis"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-[#f30d29]"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">Handle</span>
-            <input
-              type="text"
-              value={categoryHandle}
-              onChange={(event) => setCategoryHandle(slugifyCategoryTitle(event.target.value))}
-              placeholder="giay-tennis"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-[#f30d29]"
-            />
-          </label>
-          <div className="flex flex-col justify-end gap-2">
-            <div className="text-xs font-medium text-gray-500">{createContextLabel}</div>
-            <button
-              type="submit"
-              className="rounded-md bg-gray-950 px-5 py-2 text-sm font-semibold text-white hover:bg-gray-800"
-            >
-              Thêm danh mục
-            </button>
+        {selectedProducts.length === 0 ? (
+          <div className="py-12 text-center text-xs text-gray-400 font-medium bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+            Chưa có sản phẩm nào thuộc danh mục này
           </div>
-        </form>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {selectedProducts.map((product) => {
+              const allPaths = getProductCategoryTreePaths(product, categoryTree);
+              const otherPaths = allPaths.filter((p) => p.leafHandle !== activeLeaf.handle);
 
-        {formError && <div className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>}
-        {formMessage && <div className="mt-3 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{formMessage}</div>}
-      </section>
-
-      <div className="grid gap-5 xl:grid-cols-[220px_260px_360px_1fr]">
-        <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-200 px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-500">
-            Danh mục cha
-          </div>
-          <div className="max-h-[620px] overflow-auto p-2">
-            {categoryTree.map((parent) => (
-              <button
-                key={parent.handle}
-                type="button"
-                onClick={() => handleParentSelect(parent)}
-                className={`mb-1 flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition ${
-                  activeParent?.handle === parent.handle
-                    ? 'bg-[#f30d29] font-semibold text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <span>{parent.title}</span>
-                <span className={activeParent?.handle === parent.handle ? 'text-white/80' : 'text-gray-400'}>
-                  {getProductCount(products, parent.handle)}
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-200 px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-500">
-            Nhóm danh mục
-          </div>
-          <div className="max-h-[620px] overflow-auto p-2">
-            {(activeParent?.children.length ? activeParent.children : activeParent ? [activeParent] : []).map((group) => (
-              <button
-                key={group.handle}
-                type="button"
-                onClick={() => handleGroupSelect(group)}
-                className={`mb-1 flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition ${
-                  activeGroup?.handle === group.handle
-                    ? 'bg-gray-950 font-semibold text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <span>{group.title}</span>
-                <span className={activeGroup?.handle === group.handle ? 'text-white/70' : 'text-gray-400'}>
-                  {getProductCount(products, group.handle)}
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-200 px-4 py-3">
-            <div className="text-xs font-bold uppercase tracking-wide text-gray-500">Danh mục con</div>
-            <div className="mt-1 text-sm font-semibold text-gray-950">{activeGroup?.title}</div>
-          </div>
-          <div className="max-h-[620px] overflow-auto p-2">
-            {leafCategories.map((leaf) => {
-              const count = getProductCount(products, leaf.handle);
               return (
-                <button
-                  key={leaf.handle}
-                  type="button"
-                  onClick={() => setActiveLeafHandle(leaf.handle)}
-                  className={`mb-2 w-full rounded-md border px-3 py-3 text-left transition ${
-                    activeLeaf?.handle === leaf.handle
-                      ? 'border-[#f30d29] bg-red-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
+                <div
+                  key={product.id}
+                  className="p-4 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 transition-all flex flex-col justify-between gap-3 shadow-2xs group"
                 >
-                  <span className="block text-sm font-semibold text-gray-950">{leaf.title}</span>
-                  <span className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                    <span>{leaf.handle}</span>
-                    <span>{count} sản phẩm</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wide text-gray-500">Sản phẩm trong danh mục con</div>
-              <div className="mt-1 text-lg font-semibold text-gray-950">{activeLeaf?.title}</div>
-            </div>
-            {activeLeaf && (
-              <a
-                href={`/collections/${activeLeaf.handle}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm font-semibold text-[#f30d29] hover:underline"
-              >
-                Xem ngoài website
-              </a>
-            )}
-          </div>
-
-          {loading ? (
-            <div className="py-16 text-center text-sm text-gray-500">Đang tải sản phẩm...</div>
-          ) : selectedProducts.length > 0 ? (
-            <div className="max-h-[620px] overflow-auto divide-y divide-gray-100">
-              {selectedProducts.map((product) => (
-                <div key={product.id} className="flex gap-3 px-4 py-3">
-                  {product.images?.[0] ? (
-                    <img src={product.images[0]} alt="" className="h-16 w-16 rounded-md border border-gray-200 object-cover" />
-                  ) : (
-                    <div className="flex h-16 w-16 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-400">
-                      No img
+                  <div className="flex gap-3">
+                    <div className="w-16 h-16 rounded-xl bg-gray-50 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center p-1">
+                      {product.images && product.images[0] ? (
+                        <img src={product.images[0]} alt="" className="w-full h-full object-contain" />
+                      ) : (
+                        <span className="text-[10px] font-mono text-gray-400">LI-NING</span>
+                      )}
                     </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-gray-950" title={product.title}>
-                      {product.title}
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-gray-900 text-xs line-clamp-2" title={product.title}>
+                        {product.title}
+                      </div>
+                      <div className="text-[11px] font-mono text-gray-500 mt-0.5">
+                        SKU: <strong className="text-gray-700">{product.sku}</strong>
+                      </div>
+                      <div className="text-xs font-bold text-[#f30d29] font-mono mt-0.5">
+                        {formatPrice(product.price)}
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-gray-500">SKU: {product.sku}</div>
-                    <div className="mt-2 flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-[#f30d29]">{formatPrice(product.price)}</span>
-                      <a href={`/admin/products/${product.id}/edit`} className="text-xs font-semibold text-blue-600 hover:underline">
-                        Sửa
-                      </a>
+                  </div>
+
+                  {/* Multi-category cross tags */}
+                  <div className="pt-2.5 border-t border-gray-100 space-y-1.5">
+                    <div className="text-[10.5px] font-bold text-gray-500 flex items-center justify-between">
+                      <span>Phân bổ danh mục ({allPaths.length} mục):</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProductForModal(product)}
+                        className="text-[#f30d29] hover:underline font-bold text-[10.5px] cursor-pointer"
+                      >
+                        Xem chi tiết ↗
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1">
+                      {otherPaths.slice(0, 3).map((op, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-[10px] font-medium border border-gray-200 truncate max-w-[200px]"
+                          title={op.fullPathString}
+                        >
+                          {op.rootTitle} → {op.leafTitle}
+                        </span>
+                      ))}
+                      {otherPaths.length > 3 && (
+                        <span className="px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded text-[10px] font-bold font-mono">
+                          +{otherPaths.length - 3} mục
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Add Custom Category Form */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-2xs space-y-4">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-900 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-[#111111]" />
+          THÊM DANH MỤC MỚI VÀO CÂY MENU
+        </h2>
+
+        {formMessage && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-xl text-center">
+            ✓ {formMessage}
+          </div>
+        )}
+        {formError && (
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-xl text-center">
+            ✕ {formError}
+          </div>
+        )}
+
+        <form onSubmit={handleCreateCategory} className="space-y-4 text-xs">
+          <div>
+            <label className="block font-bold text-gray-700 mb-1.5">Vị trí cấp bậc tạo mới:</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { type: 'parent', label: '1. Danh mục lớn (Cấp 1)' },
+                { type: 'group', label: `2. Nhóm thuộc ${activeParent?.title}` },
+                { type: 'child', label: `3. Danh mục con thuộc ${activeGroup?.title}` },
+              ].map((opt) => (
+                <label
+                  key={opt.type}
+                  className={`p-2.5 rounded-xl border text-center font-bold cursor-pointer transition-all ${
+                    createType === opt.type
+                      ? 'bg-[#111111] text-white border-[#111111] shadow-xs'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="createType"
+                    checked={createType === opt.type}
+                    onChange={() => setCreateType(opt.type as any)}
+                    className="hidden"
+                  />
+                  {opt.label}
+                </label>
               ))}
             </div>
-          ) : (
-            <div className="px-4 py-16 text-center">
-              <div className="text-sm font-semibold text-gray-950">Danh mục này chưa có sản phẩm</div>
-              <p className="mt-1 text-sm text-gray-500">Thêm sản phẩm và chọn đúng danh mục con này trong form.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-bold text-gray-700 mb-1">Tên danh mục mới *</label>
+              <input
+                type="text"
+                required
+                value={categoryTitle}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                placeholder="Ví dụ: Vợt Pickleball Pro Series..."
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-[#f30d29] outline-none"
+              />
             </div>
-          )}
-        </section>
+            <div>
+              <label className="block font-bold text-gray-700 mb-1">Handle / Đường dẫn URL *</label>
+              <input
+                type="text"
+                required
+                value={categoryHandle}
+                onChange={(e) => setCategoryHandle(e.target.value)}
+                placeholder="vot-pickleball-pro-series"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-mono text-gray-900 focus:ring-2 focus:ring-[#f30d29] outline-none"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="bg-[#f30d29] hover:bg-[#d10b23] text-white px-5 py-2.5 rounded-xl font-bold uppercase tracking-wider transition-all cursor-pointer"
+          >
+            + Tạo danh mục ngay
+          </button>
+        </form>
       </div>
+
+      {/* Product Categories Inspector Modal */}
+      <ProductCategoriesModal
+        product={selectedProductForModal}
+        tree={categoryTree}
+        onClose={() => setSelectedProductForModal(null)}
+      />
     </div>
   );
 }

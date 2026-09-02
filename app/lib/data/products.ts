@@ -6,6 +6,8 @@ import { trainingProducts } from './trainingProducts';
 import { basketballProducts } from './basketballProducts';
 import { footballProducts } from './footballProducts';
 import { golfProducts } from './golfProducts';
+import { sportlifeProducts } from './sportlifeProducts';
+import { sportwearProducts } from './sportwearProducts';
 
 const baseProducts: Product[] = [
   {
@@ -1321,8 +1323,10 @@ const cleanBaseProducts = baseProducts.filter(p => {
   const isBasketball = p.collections.includes("bong-ro-2") || p.sport === "bong-ro-2" || p.title.toLowerCase().includes("bóng rổ");
   const isFootball = p.collections.includes("bong-da") || p.sport === "bong-da" || p.title.toLowerCase().includes("bóng đá");
   const isGolf = p.collections.includes("golf-1") || p.sport === "golf-1" || p.title.toLowerCase().includes("golf");
+  const isSportlife = p.collections.includes("sportlife");
+  const isSportwear = p.collections.includes("sportwear");
   // Badminton and Pickleball are exclusively sourced from badmintonProducts and pickleballProducts
-  if (isBadminton || isPickleball || isRunning || isTraining || isBasketball || isFootball || isGolf) return false;
+  if (isBadminton || isPickleball || isRunning || isTraining || isBasketball || isFootball || isGolf || isSportlife || isSportwear) return false;
 
   const hasPlaceholderPickleImage = p.images.some(img => img.includes("acpw") || img.includes("acpv"));
   if (hasPlaceholderPickleImage) return false;
@@ -1339,6 +1343,8 @@ const rawMerged: Product[] = [
   ...basketballProducts,
   ...footballProducts,
   ...golfProducts,
+  ...sportlifeProducts,
+  ...sportwearProducts,
   ...cleanBaseProducts,
 ];
 

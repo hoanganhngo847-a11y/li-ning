@@ -79,9 +79,14 @@ export function normalizeProductBody(body: any, id: string, existingProduct: any
     gender,
     description: String(body.description || existingProduct.description || ''),
     sku: String(body.sku || existingProduct.sku || id).trim(),
+    model3d: body.model3d !== undefined ? String(body.model3d).trim() : (existingProduct.model3d || ''),
+    model3dTop: body.model3dTop !== undefined ? String(body.model3dTop).trim() : (existingProduct.model3dTop || ''),
+    model3dBottom: body.model3dBottom !== undefined ? String(body.model3dBottom).trim() : (existingProduct.model3dBottom || ''),
     available,
   };
 }
+
+
 
 export function buildUniqueHandle(baseHandle: string, products: any[], id: string) {
   const fallback = baseHandle || `san-pham-${id}`;

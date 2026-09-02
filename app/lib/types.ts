@@ -25,7 +25,13 @@ export interface Product {
   colorTone?: 'do' | 'den' | 'trang' | 'xanh_duong' | 'xanh_navy' | 'xanh_la' | 'vang' | 'cam' | 'hong' | 'tim' | 'xam' | 'be' | 'nau';
   colorName?: string;
   colorHex?: string;
+  model3d?: string;
+  model3dTop?: string;
+  model3dBottom?: string;
 }
+
+
+
 
 export interface Collection {
   handle: string;
