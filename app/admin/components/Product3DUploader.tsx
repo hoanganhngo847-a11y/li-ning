@@ -29,6 +29,7 @@ function SingleUploadZone({
   accentColor = 'blue',
 }: SingleUploadZoneProps) {
   const [uploading, setUploading] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState('');
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [customUrl, setCustomUrl] = useState('');
@@ -55,27 +56,68 @@ function SingleUploadZone({
   const handleFileUpload = async (file: File) => {
     setError('');
     setUploading(true);
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    setUploadProgressText(`Đang tải ${file.name} (${sizeMb} MB)...`);
 
     try {
+      // Step 1: Attempt direct binary stream upload (Fastest & Most reliable for 3D binary files)
+      try {
+        const streamRes = await fetch('/api/admin/upload', {
+          method: 'POST',
+          headers: {
+            'x-filename': encodeURIComponent(file.name),
+            'content-type': 'application/octet-stream',
+          },
+          body: file,
+        });
+
+        if (streamRes.ok) {
+          const rawText = await streamRes.text();
+          let data: any;
+          try {
+            data = JSON.parse(rawText);
+          } catch {
+            data = { url: rawText };
+          }
+          if (data && data.url) {
+            onChange(data.url);
+            setUploading(false);
+            setUploadProgressText('');
+            return;
+          }
+        }
+      } catch (streamErr) {
+        console.warn('Direct stream upload attempt failed, falling back to FormData:', streamErr);
+      }
+
+      // Step 2: Fallback to FormData Multipart Upload
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch('/api/admin/upload', {
+      const formRes = await fetch('/api/admin/upload', {
         method: 'POST',
         body: formData,
       });
 
-      if (res.ok) {
-        const data = (await res.json()) as { url: string };
-        onChange(data.url);
-      } else {
-        const data = (await res.json()) as { error?: string };
-        setError(data.error || 'Upload file 3D thất bại');
+      const responseText = await formRes.text();
+      let resData: any = {};
+      try {
+        resData = JSON.parse(responseText);
+      } catch {
+        resData = { error: responseText.slice(0, 100) };
       }
-    } catch (err) {
-      setError('Lỗi kết nối khi tải file 3D lên');
+
+      if (formRes.ok && resData.url) {
+        onChange(resData.url);
+      } else {
+        setError(resData.error || `Upload thất bại (Mã lỗi HTTP: ${formRes.status})`);
+      }
+    } catch (err: any) {
+      console.error('Client upload exception:', err);
+      setError(err?.message ? `Lỗi: ${err.message}` : 'Lỗi kết nối khi tải file 3D lên máy chủ');
     } finally {
       setUploading(false);
+      setUploadProgressText('');
     }
   };
 
@@ -124,8 +166,15 @@ function SingleUploadZone({
       </div>
 
       {error && (
-        <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold rounded-xl">
-          ✕ {error}
+        <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold rounded-xl flex items-start justify-between gap-2">
+          <span>✕ {error}</span>
+          <button
+            type="button"
+            onClick={() => setError('')}
+            className="text-red-400 hover:text-red-700 font-bold px-1"
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -186,12 +235,19 @@ function SingleUploadZone({
           >
             <span className="text-xl opacity-80">{icon}</span>
             <div className="text-xs font-bold text-gray-800">
-              {uploading ? 'Đang tải file lên...' : 'Kéo thả file 3D (.glb, .gltf, .obj...)'}
+              {uploading ? uploadProgressText || 'Đang tải file 3D lên...' : 'Kéo thả file 3D (.glb, .gltf, .obj...)'}
             </div>
 
             <div className="flex items-center gap-2 pt-1">
-              <label className="px-3 py-1.5 bg-[#111111] hover:bg-black text-white rounded-lg text-[11px] font-bold uppercase tracking-wider cursor-pointer shadow-xs transition-all">
-                {uploading ? 'Đang xử lý...' : 'Chọn file'}
+              <label className="px-3 py-1.5 bg-[#111111] hover:bg-black text-white rounded-lg text-[11px] font-bold uppercase tracking-wider cursor-pointer shadow-xs transition-all flex items-center gap-1.5">
+                {uploading ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                    <span>Đang xử lý...</span>
+                  </>
+                ) : (
+                  'Chọn file từ máy'
+                )}
                 <input
                   type="file"
                   accept=".glb,.gltf,.usdz,.obj,.fbx,.stl,.zip"
@@ -376,7 +432,7 @@ export default function Product3DUploader({
 
       {/* Info footer */}
       <div className="pt-2 flex items-center justify-between text-[11px] text-gray-400">
-        <span>* Định dạng khuyên dùng: .glb hoặc .gltf (Three.js WebGL rendering)</span>
+        <span>* Định dạng khuyên dùng: .glb hoặc .gltf (Hỗ trợ dung lượng lớn đến 100MB)</span>
         {(model3d || model3dTop || model3dBottom) && (
           <span className="font-bold text-emerald-600 flex items-center gap-1">
             <span>●</span> Đã sẵn sàng hiển thị chế độ 3D trên storefront
