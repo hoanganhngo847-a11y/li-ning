@@ -22,6 +22,9 @@ export interface Product {
   description: string;
   sku: string;
   available: boolean;
+  colorTone?: 'do' | 'den' | 'trang' | 'xanh_duong' | 'xanh_navy' | 'xanh_la' | 'vang' | 'cam' | 'hong' | 'tim' | 'xam' | 'be' | 'nau';
+  colorName?: string;
+  colorHex?: string;
 }
 
 export interface Collection {

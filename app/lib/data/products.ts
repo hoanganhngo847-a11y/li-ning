@@ -1,7 +1,13 @@
 import type { Product } from '../types';
-import { supplementalProducts } from './supplementalProducts';
+import { pickleballProducts } from './pickleballProducts';
+import { badmintonProducts } from './badmintonProducts';
+import { runningProducts } from './runningProducts';
+import { trainingProducts } from './trainingProducts';
+import { basketballProducts } from './basketballProducts';
+import { footballProducts } from './footballProducts';
+import { golfProducts } from './golfProducts';
 
-export const products: Product[] = [
+const baseProducts: Product[] = [
   {
     id: '1',
     handle: 'ao-polo-nam-p-aplr125-10v',
@@ -1304,5 +1310,43 @@ export const products: Product[] = [
     sku: 'P-AKLU072-4V',
     available: true
   },
-  ...supplementalProducts,
 ];
+
+// Filter baseProducts to ensure no duplicate badminton or pickleball products and no placeholder images exist
+const cleanBaseProducts = baseProducts.filter(p => {
+  const isBadminton = p.collections.includes("cau-long-2") || p.sport === "cau-long-2" || p.title.toLowerCase().includes("cầu lông");
+  const isPickleball = p.collections.includes("pickleball") || p.sport === "pickleball" || p.title.toLowerCase().includes("pickleball");
+  const isRunning = p.collections.includes("chay-bo-1") || p.sport === "chay-bo-1" || p.title.toLowerCase().includes("chạy bộ");
+  const isTraining = p.collections.includes("luyen-tap-1") || p.sport === "luyen-tap-1" || p.title.toLowerCase().includes("tập luyện");
+  const isBasketball = p.collections.includes("bong-ro-2") || p.sport === "bong-ro-2" || p.title.toLowerCase().includes("bóng rổ");
+  const isFootball = p.collections.includes("bong-da") || p.sport === "bong-da" || p.title.toLowerCase().includes("bóng đá");
+  const isGolf = p.collections.includes("golf-1") || p.sport === "golf-1" || p.title.toLowerCase().includes("golf");
+  // Badminton and Pickleball are exclusively sourced from badmintonProducts and pickleballProducts
+  if (isBadminton || isPickleball || isRunning || isTraining || isBasketball || isFootball || isGolf) return false;
+
+  const hasPlaceholderPickleImage = p.images.some(img => img.includes("acpw") || img.includes("acpv"));
+  if (hasPlaceholderPickleImage) return false;
+
+  return true;
+});
+
+// Authoritative merged products: Real Badminton + Real Pickleball + Real Base Products
+const rawMerged: Product[] = [
+  ...badmintonProducts,
+  ...pickleballProducts,
+  ...runningProducts,
+  ...trainingProducts,
+  ...basketballProducts,
+  ...footballProducts,
+  ...golfProducts,
+  ...cleanBaseProducts,
+];
+
+const handleMap = new Map<string, Product>();
+for (const p of rawMerged) {
+  if (!handleMap.has(p.handle)) {
+    handleMap.set(p.handle, p);
+  }
+}
+
+export const products: Product[] = Array.from(handleMap.values());

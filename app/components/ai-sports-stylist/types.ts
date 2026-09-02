@@ -143,6 +143,53 @@ export const SKIN_TONE_PRESETS: SkinTonePreset[] = [
   },
 ];
 
+export const SKIN_TONE_COLOR_MATCH: Record<
+  string,
+  {
+    bestTones: string[];
+    goodTones: string[];
+    label: string;
+    advice: string;
+  }
+> = {
+  fair: {
+    bestTones: ['do', 'xanh_navy', 'den', 'hong', 'tim', 'xanh_duong'],
+    goodTones: ['xam', 'xanh_la'],
+    label: 'Trắng sáng',
+    advice: 'Tone da sáng rất hợp với màu đỏ Li-Ning, xanh navy, đen và các gam màu tương phản cao, làm nổi bật làn da tươi tắn.',
+  },
+  natural: {
+    bestTones: ['do', 'trang', 'xanh_duong', 'xam', 'den', 'xanh_navy'],
+    goodTones: ['cam', 'hong', 'tim'],
+    label: 'Tự nhiên (Á Đông)',
+    advice: 'Tone da tự nhiên hài hòa với trang phục màu đỏ, trắng sứ, xanh dương và xám titanium, tạo vẻ thanh lịch, khỏe khoắn.',
+  },
+  golden_tan: {
+    bestTones: ['trang', 'do', 'xanh_la', 'cam', 'xanh_duong'],
+    goodTones: ['den', 'vang', 'be'],
+    label: 'Vàng ấm',
+    advice: 'Tone da vàng ấm cực kỳ ăn nhập với màu trắng tinh, đỏ rực rỡ, xanh lục bảo và cam, tôn lên vẻ thể thao tràn đầy năng lượng.',
+  },
+  bronze: {
+    bestTones: ['trang', 'vang', 'cam', 'den', 'do', 'xanh_la'],
+    goodTones: ['xanh_duong', 'xam'],
+    label: 'Rám nắng',
+    advice: 'Tone da rám nắng tỏa sáng rực rỡ với trang phục màu trắng tinh khôi, vàng neon, cam san hô và đen thể thao tạo độ tương phản mạnh mẽ.',
+  },
+  honey: {
+    bestTones: ['trang', 'vang', 'cam', 'xanh_la', 'hong', 'do'],
+    goodTones: ['xanh_duong', 'xam'],
+    label: 'Bánh mật',
+    advice: 'Tone da bánh mật nâu săn chắc rất hợp màu trắng sáng, vàng chanh, cam rực rỡ và xanh neon, làm tôn nét khỏe khoắn của cơ bắp.',
+  },
+  deep: {
+    bestTones: ['trang', 'cam', 'xanh_duong', 'vang', 'do'],
+    goodTones: ['xanh_la', 'xam'],
+    label: 'Ngăm khỏe',
+    advice: 'Tone da ngăm đậm nổi bật khi mặc trang phục màu trắng sáng, cam lửa, xanh coban hoặc vàng thể thao phát sáng.',
+  },
+};
+
 // ==========================================
 // SPORT OPTIONS
 // ==========================================
