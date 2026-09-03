@@ -263,7 +263,9 @@ export interface FittedItem {
   size: ClothingSize;
   colorHex: string;
   category: 'top' | 'bottom' | 'shoes';
+  exactModelUrl?: string;
 }
+
 
 export interface FittingState {
   top: FittedItem | null;

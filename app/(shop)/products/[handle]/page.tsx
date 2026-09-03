@@ -11,6 +11,7 @@ import { useCart } from '@/app/lib/cart-context'
 import Link from 'next/link'
 import { useProductsWithAdminProducts } from '@/app/lib/admin-products'
 import Product3DViewer from '@/app/components/Product3DViewer'
+import StylistConfigurator from '@/app/components/ai-sports-stylist/StylistConfigurator'
 
 export default function ProductDetailPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = use(params)
@@ -24,6 +25,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ handle
   const [activeTab, setActiveTab] = useState<'desc'|'details'>('desc')
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
   const [activeSuitPart, setActiveSuitPart] = useState<'top' | 'bottom'>('top')
+  const [isTryOnOpen, setIsTryOnOpen] = useState(false)
+
 
   const has3D = Boolean(product?.model3d || product?.model3dTop || product?.model3dBottom)
   const isSuitDual3D = Boolean(product?.model3dTop && product?.model3dBottom)
@@ -350,6 +353,21 @@ export default function ProductDetailPage({ params }: { params: Promise<{ handle
               </div>
             </div>
 
+            {/* MẶC THỬ 3D TRÊN AVATAR */}
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => setIsTryOnOpen(true)}
+                className="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-gray-950 via-gray-900 to-gray-950 hover:from-black hover:to-black text-white font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg border border-gray-800 transition-all flex items-center justify-center gap-2.5 cursor-pointer group"
+              >
+                <span className="text-base group-hover:scale-110 transition-transform">🧍‍♂️</span>
+                <span>MẶC THỬ 3D TRÊN AVATAR VÓC DÁNG</span>
+                <span className="px-2 py-0.5 rounded-full bg-[#f30d29] text-white text-[9.5px] font-mono font-bold">
+                  AI Stylist
+                </span>
+              </button>
+            </div>
+
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <button 
@@ -367,6 +385,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ handle
                 Mua ngay
               </Link>
             </div>
+
 
             {/* Cam kết */}
             <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-3">
@@ -466,6 +485,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ handle
           </StaggerChildren>
         </div>
       )}
+
+      {/* 3D Virtual Try-On Modal */}
+      <StylistConfigurator
+        isOpen={isTryOnOpen}
+        onClose={() => setIsTryOnOpen(false)}
+        initialProduct={product}
+      />
     </div>
   )
 }
+
+

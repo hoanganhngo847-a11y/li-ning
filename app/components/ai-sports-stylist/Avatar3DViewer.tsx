@@ -14,6 +14,7 @@ interface Avatar3DViewerProps {
   skinTone?: string;
   fittingState?: FittingState;
   activeHoverRegion?: DebugMaskRegion;
+  showGuides?: boolean;
 }
 
 type CameraPreset = 'all' | 'front' | 'side' | 'back';
@@ -23,12 +24,19 @@ export default function Avatar3DViewer({
   skinTone = '#e6b8a2',
   fittingState,
   activeHoverRegion = 'none',
+  showGuides: propShowGuides = false,
 }: Avatar3DViewerProps) {
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activePreset, setActivePreset] = useState<CameraPreset>('front');
-  const [showGuides, setShowGuides] = useState(false);
+  const [showGuides, setShowGuides] = useState(propShowGuides);
+
+  useEffect(() => {
+    setShowGuides(propShowGuides);
+  }, [propShowGuides]);
+
 
   // Three.js instances refs
   const sceneRef = useRef<THREE.Scene | null>(null);

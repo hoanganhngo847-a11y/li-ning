@@ -8,13 +8,20 @@ import SkinToneStep from './SkinToneStep';
 import SportSelectionStep from './SportSelectionStep';
 import OutfitRecommendationStep from './OutfitRecommendationStep';
 import Avatar3DViewer from './Avatar3DViewer';
+import type { Product } from '@/app/lib/types';
+import { getProduct3DConfig } from '@/app/lib/avatar/product3DRegistry';
 
 interface StylistConfiguratorProps {
   isOpen: boolean;
   onClose: () => void;
+  initialProduct?: Product | null;
 }
 
-export default function StylistConfigurator({ isOpen, onClose }: StylistConfiguratorProps) {
+export default function StylistConfigurator({
+  isOpen,
+  onClose,
+  initialProduct = null,
+}: StylistConfiguratorProps) {
   const [currentStep, setCurrentStep] = useState<StylistStepId>('body');
   const [activeHoverRegion, setActiveHoverRegion] = useState<'none' | 'chest' | 'waist' | 'hips' | 'all'>('none');
 
@@ -34,7 +41,7 @@ export default function StylistConfigurator({ isOpen, onClose }: StylistConfigur
   const [skinTone, setSkinTone] = useState<string>('#e6b8a2');
 
   // Step 3: Sport Category
-  const [selectedSport, setSelectedSport] = useState<string>('pickleball');
+  const [selectedSport, setSelectedSport] = useState<string>('badminton');
 
   // Step 4: 3D Fitted Apparel
   const [fittingState, setFittingState] = useState<FittingState>({
@@ -42,6 +49,47 @@ export default function StylistConfigurator({ isOpen, onClose }: StylistConfigur
     bottom: null,
     shoes: null,
   });
+
+  // Automatically pre-equip product if opened with initialProduct
+  useEffect(() => {
+    if (isOpen && initialProduct) {
+      setCurrentStep('outfit');
+      const config3D = getProduct3DConfig(initialProduct.sku, initialProduct.handle);
+      const colorHex = initialProduct.colorHex || '#ffffff';
+
+      if (config3D?.type === 'outfit' || initialProduct.title.toLowerCase().includes('bộ quần áo')) {
+        setFittingState((prev) => ({
+          ...prev,
+          top: {
+            product: initialProduct,
+            size: 'L',
+            colorHex,
+            category: 'top',
+            exactModelUrl: config3D?.garments.top?.modelUrl || initialProduct.model3dTop,
+          },
+          bottom: {
+            product: initialProduct,
+            size: 'L',
+            colorHex,
+            category: 'bottom',
+            exactModelUrl: config3D?.garments.bottom?.modelUrl || initialProduct.model3dBottom,
+          },
+        }));
+      } else {
+        const cat = initialProduct.handle.includes('quan') ? 'bottom' : 'top';
+        setFittingState((prev) => ({
+          ...prev,
+          [cat]: {
+            product: initialProduct,
+            size: 'L',
+            colorHex,
+            category: cat,
+            exactModelUrl: initialProduct.model3d,
+          },
+        }));
+      }
+    }
+  }, [isOpen, initialProduct]);
 
   // Handle ESC key to close modal
   const handleKeyDown = useCallback(
@@ -84,6 +132,14 @@ export default function StylistConfigurator({ isOpen, onClose }: StylistConfigur
     }));
   };
 
+  const handleEquipOutfit = (outfit: { top: FittedItem; bottom: FittedItem }) => {
+    setFittingState((prev) => ({
+      ...prev,
+      top: outfit.top,
+      bottom: outfit.bottom,
+    }));
+  };
+
   const handleUnequipItem = (category: 'top' | 'bottom') => {
     setFittingState((prev) => ({
       ...prev,
@@ -116,10 +172,10 @@ export default function StylistConfigurator({ isOpen, onClose }: StylistConfigur
             </div>
             <div>
               <h2 className="text-xs sm:text-sm md:text-base font-black tracking-tight uppercase text-gray-950">
-                TƯ VẤN TRANG PHỤC AI
+                TƯ VẤN TRANG PHỤC AI & PHÒNG THỬ ĐỒ 3D
               </h2>
               <p className="text-[10px] md:text-[11px] text-gray-400 font-medium hidden md:block">
-                Cá nhân hóa trang phục theo vóc dáng của bạn
+                Cá nhân hóa trang phục theo vóc dáng của bạn • Hỗ trợ mô hình 3D chuẩn xác
               </p>
             </div>
           </div>
@@ -182,6 +238,7 @@ export default function StylistConfigurator({ isOpen, onClose }: StylistConfigur
                   selectedSport={selectedSport}
                   fittingState={fittingState}
                   onEquipItem={handleEquipItem}
+                  onEquipOutfit={handleEquipOutfit}
                   onUnequipItem={handleUnequipItem}
                   onBack={() => setCurrentStep('sport')}
                   onClose={onClose}
@@ -196,6 +253,7 @@ export default function StylistConfigurator({ isOpen, onClose }: StylistConfigur
                 skinTone={skinTone}
                 fittingState={fittingState}
                 activeHoverRegion={activeHoverRegion}
+                showGuides={currentStep === 'body'}
               />
             </div>
           </div>

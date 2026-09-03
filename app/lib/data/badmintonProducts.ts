@@ -112,7 +112,10 @@ export const badmintonProducts: Product[] = [
     "available": true,
     "colorTone": "trang",
     "colorName": "Trắng Sứ",
-    "colorHex": "#ffffff"
+    "colorHex": "#ffffff",
+    "model3d": "/models/products/AWET001-1/top.glb",
+    "model3dTop": "/models/products/AWET001-1/top.glb",
+    "model3dBottom": "/models/products/AWET001-1/bottom.glb"
   },
   {
     "id": "4003",

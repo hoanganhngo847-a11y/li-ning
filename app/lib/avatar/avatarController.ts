@@ -9,6 +9,8 @@ import { ClothingEngine } from './clothingEngine';
 import { mapMeasurementToInfluences, CALIBRATION_TABLES } from './measurementCalibration';
 import { FittedItem } from '@/app/components/ai-sports-stylist/types';
 
+import { getProduct3DConfig } from './product3DRegistry';
+
 export interface AvatarControllerCallbacks {
   onLoadStart?: () => void;
   onLoadSuccess?: (model: THREE.Group) => void;
@@ -88,13 +90,38 @@ export class AvatarController {
   }
 
   /**
-   * Equips a sportswear item (shirt/shorts) onto the 3D model
+   * Equips a sportswear item (exact 3D model or procedural shirt/shorts) onto the 3D model
    */
-  public equipClothingItem(item: FittedItem): void {
+  public async equipClothingItem(item: FittedItem): Promise<void> {
     if (this.currentModel) {
       this.clothingEngine.setBaseAvatarModel(this.currentModel);
     }
     const heightMeters = (this.currentParameters?.heightCm || 175) / 100;
+
+    const registryConfig = getProduct3DConfig(item.product.sku, item.product.handle);
+
+    if (registryConfig?.exact3D) {
+      if (item.category === 'top' && registryConfig.garments.top) {
+        await this.clothingEngine.equipExactGarment(
+          'top',
+          registryConfig.garments.top.modelUrl,
+          registryConfig.garments.top
+        );
+        return;
+      } else if (item.category === 'bottom' && registryConfig.garments.bottom) {
+        await this.clothingEngine.equipExactGarment(
+          'bottom',
+          registryConfig.garments.bottom.modelUrl,
+          registryConfig.garments.bottom
+        );
+        return;
+      }
+    }
+
+    if (item.exactModelUrl) {
+      await this.clothingEngine.equipExactGarment(item.category, item.exactModelUrl);
+      return;
+    }
 
     if (item.category === 'top') {
       this.clothingEngine.equipShirt(item, heightMeters);
@@ -102,6 +129,7 @@ export class AvatarController {
       this.clothingEngine.equipShorts(item, heightMeters);
     }
   }
+
 
   public clearClothing(): void {
     this.clothingEngine.clear();

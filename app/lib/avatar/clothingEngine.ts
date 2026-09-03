@@ -1,6 +1,8 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { BodyParameters } from './bodyParameters';
 import { ClothingSize, FittedItem } from '@/app/components/ai-sports-stylist/types';
+import { Garment3DModelConfig } from './product3DRegistry';
 
 /**
  * Generates an athletic sportswear PBR texture with Li-Ning branding, collar trims, and fabric weave
@@ -186,15 +188,21 @@ function extractSubmeshGeometry(
 /**
  * 3D Clothing Fit Engine
  * 
- * Extracts high-fidelity sportswear meshes directly from the avatar's anatomical topology,
- * and attaches them inside the avatar model's local coordinate frame.
+ * Supports both:
+ * 1. Exact 3D Mesh Loading (GLTF/GLB) for multi-part outfits (AWET001-1 top.glb, bottom.glb...)
+ * 2. Anatomical Procedural extraction for standard catalog products
  */
 export class ClothingEngine {
   private clothingGroup: THREE.Group;
   private currentShirtMesh: THREE.Mesh | null = null;
   private currentShortsMesh: THREE.Mesh | null = null;
+  private exactTopGroup: THREE.Group | null = null;
+  private exactBottomGroup: THREE.Group | null = null;
+  private exactShoesGroup: THREE.Group | null = null;
+
   private baseAvatarMesh: THREE.Mesh | null = null;
   private currentAvatarModel: THREE.Group | null = null;
+  private gltfLoader = new GLTFLoader();
 
   constructor(scene: THREE.Scene) {
     this.clothingGroup = new THREE.Group();
@@ -228,9 +236,94 @@ export class ClothingEngine {
   }
 
   /**
-   * Equips a realistic athletic shirt/polo/jersey onto the avatar
+   * Loads and equips an EXACT 3D garment GLB file (e.g. AWET001-1 top.glb or bottom.glb)
+   */
+  public async equipExactGarment(
+    slot: 'top' | 'bottom' | 'shoes',
+    modelUrl: string,
+    config?: Garment3DModelConfig
+  ): Promise<THREE.Group | null> {
+    // 1. Clear previous garment in this specific slot
+    if (slot === 'top') {
+      if (this.currentShirtMesh) {
+        this.clothingGroup.remove(this.currentShirtMesh);
+        this.disposeMesh(this.currentShirtMesh);
+        this.currentShirtMesh = null;
+      }
+      if (this.exactTopGroup) {
+        this.clothingGroup.remove(this.exactTopGroup);
+        this.disposeObject(this.exactTopGroup);
+        this.exactTopGroup = null;
+      }
+    } else if (slot === 'bottom') {
+      if (this.currentShortsMesh) {
+        this.clothingGroup.remove(this.currentShortsMesh);
+        this.disposeMesh(this.currentShortsMesh);
+        this.currentShortsMesh = null;
+      }
+      if (this.exactBottomGroup) {
+        this.clothingGroup.remove(this.exactBottomGroup);
+        this.disposeObject(this.exactBottomGroup);
+        this.exactBottomGroup = null;
+      }
+    } else if (slot === 'shoes') {
+      if (this.exactShoesGroup) {
+        this.clothingGroup.remove(this.exactShoesGroup);
+        this.disposeObject(this.exactShoesGroup);
+        this.exactShoesGroup = null;
+      }
+    }
+
+    if (!modelUrl) return null;
+
+    try {
+      const gltf = await this.gltfLoader.loadAsync(modelUrl);
+      const model = gltf.scene;
+
+      // Set Shadows and preserve original textures & materials
+      model.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const m = child as THREE.Mesh;
+          m.castShadow = true;
+          m.receiveShadow = true;
+        }
+      });
+
+      // Apply fitting transform
+      const scale = config?.scale || [1, 1, 1];
+      const position = config?.position || [0, 0, 0];
+      const rotation = config?.rotation || [0, 0, 0];
+
+      model.scale.set(scale[0], scale[1], scale[2]);
+      model.position.set(position[0], position[1], position[2]);
+      model.rotation.set(rotation[0], rotation[1], rotation[2]);
+
+      this.clothingGroup.add(model);
+
+      if (slot === 'top') {
+        this.exactTopGroup = model;
+      } else if (slot === 'bottom') {
+        this.exactBottomGroup = model;
+      } else if (slot === 'shoes') {
+        this.exactShoesGroup = model;
+      }
+
+      return model;
+    } catch (error) {
+      console.error(`[ClothingEngine] Failed to load exact 3D garment (${slot}) from ${modelUrl}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Equips a realistic athletic shirt/polo/jersey onto the avatar (procedural fallback)
    */
   public equipShirt(item: FittedItem, modelHeight = 1.75): void {
+    if (this.exactTopGroup) {
+      this.clothingGroup.remove(this.exactTopGroup);
+      this.disposeObject(this.exactTopGroup);
+      this.exactTopGroup = null;
+    }
     if (this.currentShirtMesh) {
       this.clothingGroup.remove(this.currentShirtMesh);
       this.disposeMesh(this.currentShirtMesh);
@@ -241,9 +334,6 @@ export class ClothingEngine {
 
     const sizeOffset = this.getSizeOffset(item.size);
 
-    // Anatomical Shirt Filter:
-    // Torso: Collar (0.80) down to waist/hem (0.49)
-    // Sleeves / Shoulders: Upper arm down to mid-bicep (0.64) and lateral bounds (|x| <= 0.34m)
     const shirtGeom = extractSubmeshGeometry(
       this.baseAvatarMesh.geometry,
       (x, y, z, yNorm, absX) => {
@@ -262,7 +352,6 @@ export class ClothingEngine {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
-    // Positioned at origin within avatar model's local coordinate frame
     mesh.position.set(0, 0, 0);
     mesh.scale.set(1, 1, 1);
     mesh.rotation.set(0, 0, 0);
@@ -272,9 +361,14 @@ export class ClothingEngine {
   }
 
   /**
-   * Equips realistic athletic shorts/pants onto the avatar
+   * Equips realistic athletic shorts/pants onto the avatar (procedural fallback)
    */
   public equipShorts(item: FittedItem, modelHeight = 1.75): void {
+    if (this.exactBottomGroup) {
+      this.clothingGroup.remove(this.exactBottomGroup);
+      this.disposeObject(this.exactBottomGroup);
+      this.exactBottomGroup = null;
+    }
     if (this.currentShortsMesh) {
       this.clothingGroup.remove(this.currentShortsMesh);
       this.disposeMesh(this.currentShortsMesh);
@@ -285,8 +379,6 @@ export class ClothingEngine {
 
     const sizeOffset = this.getSizeOffset(item.size);
 
-    // Anatomical Shorts Filter:
-    // Waist (0.53) down to above knees (0.33)
     const shortsGeom = extractSubmeshGeometry(
       this.baseAvatarMesh.geometry,
       (x, y, z, yNorm, absX) => {
@@ -322,6 +414,7 @@ export class ClothingEngine {
    * Clears all equipped clothing layers
    */
   public clear(): void {
+
     if (this.currentShirtMesh) {
       this.clothingGroup.remove(this.currentShirtMesh);
       this.disposeMesh(this.currentShirtMesh);
@@ -332,6 +425,21 @@ export class ClothingEngine {
       this.disposeMesh(this.currentShortsMesh);
       this.currentShortsMesh = null;
     }
+    if (this.exactTopGroup) {
+      this.clothingGroup.remove(this.exactTopGroup);
+      this.disposeObject(this.exactTopGroup);
+      this.exactTopGroup = null;
+    }
+    if (this.exactBottomGroup) {
+      this.clothingGroup.remove(this.exactBottomGroup);
+      this.disposeObject(this.exactBottomGroup);
+      this.exactBottomGroup = null;
+    }
+    if (this.exactShoesGroup) {
+      this.clothingGroup.remove(this.exactShoesGroup);
+      this.disposeObject(this.exactShoesGroup);
+      this.exactShoesGroup = null;
+    }
   }
 
   public getGroup(): THREE.Group {
@@ -341,15 +449,15 @@ export class ClothingEngine {
   private getSizeOffset(size: ClothingSize): number {
     switch (size) {
       case 'S':
-        return 0.0020; // Snug compression fit
+        return 0.0020;
       case 'M':
-        return 0.0030; // Athletic fit
+        return 0.0030;
       case 'L':
-        return 0.0042; // Regular fit
+        return 0.0042;
       case 'XL':
-        return 0.0058; // Relaxed fit
+        return 0.0058;
       case 'XXL':
-        return 0.0076; // Oversized fit
+        return 0.0076;
       default:
         return 0.0035;
     }
@@ -364,6 +472,14 @@ export class ClothingEngine {
         mesh.material.dispose();
       }
     }
+  }
+
+  private disposeObject(obj: THREE.Object3D): void {
+    obj.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        this.disposeMesh(child as THREE.Mesh);
+      }
+    });
   }
 
   public dispose(): void {

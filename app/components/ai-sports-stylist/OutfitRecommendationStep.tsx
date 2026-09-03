@@ -15,6 +15,7 @@ import {
   recommendSize,
 } from "./types";
 import type { Product } from "@/app/lib/types";
+import { getProduct3DConfig } from "@/app/lib/avatar/product3DRegistry";
 
 interface OutfitRecommendationStepProps {
   profile: BodyProfile;
@@ -22,12 +23,14 @@ interface OutfitRecommendationStepProps {
   selectedSport: string;
   fittingState: FittingState;
   onEquipItem: (item: FittedItem) => void;
+  onEquipOutfit?: (outfit: { top: FittedItem; bottom: FittedItem }) => void;
   onUnequipItem: (category: "top" | "bottom") => void;
   onBack: () => void;
   onClose: () => void;
 }
 
 const ALL_SIZES: ClothingSize[] = ["S", "M", "L", "XL", "XXL"];
+
 
 const COLOR_TONE_FILTERS = [
   { id: "all", label: "Tất cả màu", hex: "" },
@@ -50,6 +53,7 @@ export default function OutfitRecommendationStep({
   selectedSport,
   fittingState,
   onEquipItem,
+  onEquipOutfit,
   onUnequipItem,
   onBack,
   onClose,
@@ -189,15 +193,71 @@ export default function OutfitRecommendationStep({
       (activeCategory === "top" ? recommendedTopSize : recommendedBottomSize);
 
     const colorHex = product.colorHex || "#f30d29";
-
-    let determinedCategory: "top" | "bottom" | "shoes" = activeCategory === "accessory" ? "top" : activeCategory;
     const pHandle = product.handle.toLowerCase();
     const pTitle = product.title.toLowerCase();
+
+    const config3D = getProduct3DConfig(product.sku, product.handle);
+    const isOutfit =
+      config3D?.type === "outfit" ||
+      pTitle.includes("bộ quần áo") ||
+      pTitle.includes("bộ đồ") ||
+      pTitle.includes("set quần áo") ||
+      pHandle.includes("bo-quan-ao");
+
+    if (isOutfit) {
+      if (onEquipOutfit) {
+        onEquipOutfit({
+          top: {
+            product,
+            size,
+            colorHex,
+            category: "top",
+            exactModelUrl: config3D?.garments.top?.modelUrl || product.model3dTop || product.model3d,
+          },
+          bottom: {
+            product,
+            size,
+            colorHex,
+            category: "bottom",
+            exactModelUrl: config3D?.garments.bottom?.modelUrl || product.model3dBottom || product.model3d,
+          },
+        });
+      } else {
+        onEquipItem({
+          product,
+          size,
+          colorHex,
+          category: "top",
+          exactModelUrl: config3D?.garments.top?.modelUrl || product.model3dTop,
+        });
+        onEquipItem({
+          product,
+          size,
+          colorHex,
+          category: "bottom",
+          exactModelUrl: config3D?.garments.bottom?.modelUrl || product.model3dBottom,
+        });
+      }
+      return;
+    }
+
+    let determinedCategory: "top" | "bottom" | "shoes" =
+      activeCategory === "accessory" ? "top" : activeCategory;
     if (pHandle.includes("ao") || pTitle.includes("áo") || pHandle.includes("bra")) {
       determinedCategory = "top";
-    } else if (pHandle.includes("quan") || pTitle.includes("quần") || pHandle.includes("vay") || pTitle.includes("váy")) {
+    } else if (
+      pHandle.includes("quan") ||
+      pTitle.includes("quần") ||
+      pHandle.includes("vay") ||
+      pTitle.includes("váy")
+    ) {
       determinedCategory = "bottom";
-    } else if (pHandle.includes("giay") || pTitle.includes("giày") || pHandle.includes("dep") || pTitle.includes("dép")) {
+    } else if (
+      pHandle.includes("giay") ||
+      pTitle.includes("giày") ||
+      pHandle.includes("dep") ||
+      pTitle.includes("dép")
+    ) {
       determinedCategory = "shoes";
     }
 
@@ -206,8 +266,10 @@ export default function OutfitRecommendationStep({
       size,
       colorHex,
       category: determinedCategory,
+      exactModelUrl: config3D?.garments[determinedCategory]?.modelUrl || product.model3d,
     });
   };
+
 
   const handleAddToCart = (product: Product, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -495,7 +557,15 @@ export default function OutfitRecommendationStep({
                             ✓ Hợp màu da
                           </span>
                         ) : null}
+
+                        {/* Exact 3D Multi-part Outfit Badge */}
+                        {getProduct3DConfig(product.sku, product.handle)?.exact3D && (
+                          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-200">
+                            ⚡ 3D Chuẩn (Áo + Quần)
+                          </span>
+                        )}
                       </div>
+
 
                       {/* Price */}
                       <div className="flex items-center gap-2 mt-1.5">
