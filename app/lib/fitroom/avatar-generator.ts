@@ -235,79 +235,74 @@ export async function generateCustomAvatar(
     };
   }
 
-  // 2. Load dedicated template according to exact body shape (Zero-latency fallback)
-  let baseImagePath = path.join(
-    process.cwd(),
-    'public',
-    'images',
-    'body-shapes',
-    metrics.templateFileName
-  );
+  // 2. Load dedicated template according to exact body shape (Zero-latency CDN fallback)
+  const cdnTemplateUrl = `/images/body-shapes/${metrics.templateFileName.replace('.jpg', '.png')}`;
 
-  // Fallback to default preview image if template not found
-  if (!fs.existsSync(baseImagePath)) {
-    baseImagePath = path.join(
+  try {
+    let baseImagePath = path.join(
       process.cwd(),
       'public',
       'images',
-      gender === 'nu' ? 'female-athlete-3d-preview.jpg' : 'athlete-3d-preview.jpg'
+      'body-shapes',
+      metrics.templateFileName
     );
+
+    if (!fs.existsSync(baseImagePath)) {
+      baseImagePath = path.join(
+        process.cwd(),
+        'public',
+        'images',
+        gender === 'nu' ? 'female-athlete-3d-preview.jpg' : 'athlete-3d-preview.jpg'
+      );
+    }
+
+    if (fs.existsSync(baseImagePath)) {
+      const targetW = 896;
+      const targetH = 1200;
+      let pipeline = sharp(baseImagePath).resize(targetW, targetH, { fit: 'cover' });
+
+      if (skinTone === 'fair') {
+        pipeline = pipeline.modulate({ brightness: 1.05, saturation: 0.98, hue: -2 });
+      } else if (skinTone === 'medium_asian') {
+        pipeline = pipeline.modulate({ brightness: 1.0, saturation: 1.02, hue: 0 });
+      } else if (skinTone === 'tan') {
+        pipeline = pipeline.modulate({ brightness: 0.93, saturation: 1.14, hue: -5 });
+      } else if (skinTone === 'deep') {
+        pipeline = pipeline.modulate({ brightness: 0.84, saturation: 1.10, hue: -8 });
+      }
+
+      await pipeline.jpeg({ quality: 92, chromaSubsampling: '4:4:4' }).toFile(outputFilePath);
+
+      return {
+        avatarUrl: relativeAvatarUrl,
+        avatarHash,
+        bmi: metrics.bmi,
+        bmiCategory: metrics.bmiCategory,
+        bodyShape: metrics.bodyShape,
+        skinToneName: metrics.skinToneName,
+        templateFileName: metrics.templateFileName,
+        width: targetW,
+        height: targetH,
+        whr: metrics.whr,
+        bwr: metrics.bwr,
+        hbr: metrics.hbr,
+      };
+    }
+  } catch (fsErr: any) {
+    console.warn('[AvatarGenerator] Local sharp processing skipped, serving CDN template:', fsErr.message);
   }
 
-  if (!fs.existsSync(baseImagePath)) {
-    throw new Error(`Base image not found at: ${baseImagePath}`);
-  }
-
-  const targetW = 896;
-  const targetH = 1200;
-
-  // 1. Skin tone chromatic adjustment
-  let pipeline = sharp(baseImagePath).resize(targetW, targetH, { fit: 'cover' });
-
-  if (skinTone === 'fair') {
-    // Da Trắng Sáng: Tươi sáng, hồng hào tự nhiên
-    pipeline = pipeline.modulate({
-      brightness: 1.05,
-      saturation: 0.98,
-      hue: -2,
-    });
-  } else if (skinTone === 'medium_asian') {
-    // Da Vàng Châu Á: Sắc ấm tự nhiên
-    pipeline = pipeline.modulate({
-      brightness: 1.0,
-      saturation: 1.02,
-      hue: 0,
-    });
-  } else if (skinTone === 'tan') {
-    // Da Bánh Mật: Nâu mật ong thể thao
-    pipeline = pipeline.modulate({
-      brightness: 0.93,
-      saturation: 1.14,
-      hue: -5,
-    });
-  } else if (skinTone === 'deep') {
-    // Da Nâu Đậm: Nâu đồng khỏe khoắn
-    pipeline = pipeline.modulate({
-      brightness: 0.84,
-      saturation: 1.10,
-      hue: -8,
-    });
-  }
-
-  await pipeline
-    .jpeg({ quality: 92, chromaSubsampling: '4:4:4' })
-    .toFile(outputFilePath);
-
+  // Graceful zero-latency fallback for Vercel Serverless CDN
   return {
-    avatarUrl: relativeAvatarUrl,
+    avatarUrl: cdnTemplateUrl,
     avatarHash,
     bmi: metrics.bmi,
     bmiCategory: metrics.bmiCategory,
     bodyShape: metrics.bodyShape,
     skinToneName: metrics.skinToneName,
     templateFileName: metrics.templateFileName,
-    width: targetW,
-    height: targetH,
+    width: 896,
+    height: 1200,
     whr: metrics.whr,
     bwr: metrics.bwr,
     hbr: metrics.hbr,

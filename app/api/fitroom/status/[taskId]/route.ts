@@ -23,33 +23,9 @@ export async function GET(
 
     let finalImageUrl = taskData.download_signed_url || null;
 
-    // When try-on completes, cache image to local disk to avoid Google Cloud Storage CORS and text/plain MIME type issues
+    // Return signed URL directly with high availability
     if (taskData.status === 'COMPLETED' && taskData.download_signed_url) {
-      try {
-        const tryonDir = path.join(process.cwd(), 'public', 'uploads', 'tryon');
-        if (!fs.existsSync(tryonDir)) {
-          fs.mkdirSync(tryonDir, { recursive: true });
-        }
-
-        const localFilePath = path.join(tryonDir, `${taskId}.webp`);
-        if (fs.existsSync(localFilePath) && fs.statSync(localFilePath).size > 0) {
-          finalImageUrl = `/uploads/tryon/${taskId}.webp`;
-        } else {
-          // Download and cache
-          const imgRes = await fetch(taskData.download_signed_url, {
-            headers: { 'User-Agent': 'LiNing-FitRoomCache/1.0' },
-          });
-          if (imgRes.ok) {
-            const buffer = Buffer.from(await imgRes.arrayBuffer());
-            if (buffer.length > 0) {
-              fs.writeFileSync(localFilePath, buffer);
-              finalImageUrl = `/uploads/tryon/${taskId}.webp`;
-            }
-          }
-        }
-      } catch (cacheErr) {
-        console.warn('[FitRoom Cache] Failed to cache local webp on disk, using remote url:', cacheErr);
-      }
+      finalImageUrl = taskData.download_signed_url;
     }
 
     return NextResponse.json({

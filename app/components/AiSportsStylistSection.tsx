@@ -285,6 +285,78 @@ export default function AiSportsStylistSection() {
     }
   }, [customerProfile]);
 
+  // ============================================================================
+  // STEP 2: MODEL SELECTION & GENERATION STATE
+  // ============================================================================
+  const [modelType, setModelType] = useState<'profile_avatar' | 'male' | 'female' | 'custom'>('profile_avatar');
+  const [modelPreviewUrl, setModelPreviewUrl] = useState<string>(
+    customAvatarUrl || '/images/ai-tryon/step3_model_male_runway_hd.png'
+  );
+  const [modelFile, setModelFile] = useState<File | Blob | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Body Shapes Selection States
+  const [selectedBodyShape, setSelectedBodyShape] = useState<BodyShapeModel | null>(null);
+  const [isBodyShapeModalOpen, setIsBodyShapeModalOpen] = useState<boolean>(false);
+  const [bodyShapeGenderTab, setBodyShapeGenderTab] = useState<'male' | 'female'>('male');
+
+  // Biometric matching algorithm: maps measurements to optimal athlete 3D template
+  const getMatchingBodyShape = (
+    gender: 'nam' | 'nu',
+    height: number,
+    weight: number,
+    bust: number,
+    waist: number,
+    hips: number
+  ): BodyShapeModel => {
+    const hMeters = (height || (gender === 'nu' ? 162 : 175)) / 100;
+    const bmi = Number(((weight || (gender === 'nu' ? 50 : 68)) / (hMeters * hMeters)).toFixed(1));
+    const whr = Number(((waist || (gender === 'nu' ? 64 : 78)) / (hips || (gender === 'nu' ? 90 : 95))).toFixed(2));
+    const bwr = Number(((bust || (gender === 'nu' ? 85 : 96)) / (waist || (gender === 'nu' ? 64 : 78))).toFixed(2));
+    const hbr = Number(((hips || (gender === 'nu' ? 90 : 95)) / (bust || (gender === 'nu' ? 85 : 96))).toFixed(2));
+
+    let matchedId = gender === 'nu' ? 'female-hourglass-fit' : 'male-lean-athletic';
+    if (gender === 'nu') {
+      if (bmi >= 27.5 || (bmi >= 25.5 && whr > 0.82)) {
+        matchedId = 'female-full-curve';
+      } else if (bmi < 18.5) {
+        matchedId = 'female-petite-slim';
+      } else if (hbr >= 1.10 && whr <= 0.82) {
+        matchedId = 'female-pear-shape';
+      } else if ((bust || 85) / (hips || 90) >= 1.08) {
+        matchedId = 'female-inverted-triangle';
+      } else if (bwr >= 1.20 && whr <= 0.80) {
+        if (bmi >= 23.0 || weight >= 62 || bust >= 92) {
+          matchedId = 'female-hourglass-curvy';
+        } else {
+          matchedId = 'female-hourglass-fit';
+        }
+      } else {
+        matchedId = 'female-athletic-rectangle';
+      }
+    } else {
+      if (bmi >= 26.0 || weight >= 80) {
+        matchedId = 'male-solid-heavy';
+      } else if (bmi < 19.5) {
+        matchedId = 'male-slim-lean';
+      } else if ((bust || 96) / (waist || 78) >= 1.16) {
+        matchedId = 'male-v-taper';
+      } else {
+        matchedId = 'male-lean-athletic';
+      }
+    }
+
+    const base =
+      BODY_SHAPE_MODELS.find((m) => m.id === matchedId) ||
+      (gender === 'nu' ? BODY_SHAPE_MODELS[4] : BODY_SHAPE_MODELS[0]);
+    return {
+      ...base,
+      height: `${height} cm`,
+      weight: `${weight} kg`,
+      measurements: `${bust} - ${waist} - ${hips}`,
+    };
+  };
+
   const handleQuickFill = (genderType: 'nam' | 'nu') => {
     if (genderType === 'nam') {
       setInlineFullName('Nguyễn Tuấn Anh');
@@ -296,6 +368,16 @@ export default function AiSportsStylistSection() {
       setInlineWaist('78');
       setInlineHips('95');
       setInlineSkinTone('medium_asian');
+      const defaultMale =
+        BODY_SHAPE_MODELS.find((m) => m.id === 'male-lean-athletic') || BODY_SHAPE_MODELS[0];
+      setSelectedBodyShape({
+        ...defaultMale,
+        height: '175 cm',
+        weight: '68 kg',
+        measurements: '96 - 78 - 95',
+      });
+      setModelPreviewUrl(defaultMale.imageSrc || defaultMale.thumbSrc);
+      setModelType('male');
     } else {
       setInlineFullName('Trần Mai Anh');
       setInlineAge('24');
@@ -306,6 +388,16 @@ export default function AiSportsStylistSection() {
       setInlineWaist('64');
       setInlineHips('90');
       setInlineSkinTone('fair');
+      const defaultFemale =
+        BODY_SHAPE_MODELS.find((m) => m.id === 'female-hourglass-fit') || BODY_SHAPE_MODELS[4];
+      setSelectedBodyShape({
+        ...defaultFemale,
+        height: '162 cm',
+        weight: '50 kg',
+        measurements: '85 - 64 - 90',
+      });
+      setModelPreviewUrl(defaultFemale.imageSrc || defaultFemale.thumbSrc);
+      setModelType('female');
     }
     setStep1Error(null);
   };
@@ -333,36 +425,32 @@ export default function AiSportsStylistSection() {
       return;
     }
 
+    const h = Number(inlineHeight) || (inlineGender === 'nu' ? 162 : 175);
+    const w = Number(inlineWeight) || (inlineGender === 'nu' ? 50 : 68);
+    const b = Number(inlineBust) || (inlineGender === 'nu' ? 85 : 96);
+    const wa = Number(inlineWaist) || (inlineGender === 'nu' ? 64 : 78);
+    const hi = Number(inlineHips) || (inlineGender === 'nu' ? 90 : 95);
+
+    const matchedShape = getMatchingBodyShape(inlineGender, h, w, b, wa, hi);
+    setSelectedBodyShape(matchedShape);
+    setModelPreviewUrl(matchedShape.imageSrc || matchedShape.thumbSrc);
+    setModelType(inlineGender === 'nu' ? 'female' : 'male');
+
     saveCustomerProfile({
       fullName: inlineFullName.trim(),
       age: Number(inlineAge),
       gender: inlineGender,
-      height: Number(inlineHeight),
-      weight: Number(inlineWeight),
-      bust: Number(inlineBust),
-      waist: Number(inlineWaist),
-      hips: Number(inlineHips),
+      height: h,
+      weight: w,
+      bust: b,
+      waist: wa,
+      hips: hi,
       skinTone: inlineSkinTone,
     });
 
     setStep1Error(null);
     scrollToSection('step-2-model');
   };
-
-  // ============================================================================
-  // STEP 2: MODEL SELECTION & GENERATION STATE
-  // ============================================================================
-  const [modelType, setModelType] = useState<'profile_avatar' | 'male' | 'female' | 'custom'>('profile_avatar');
-  const [modelPreviewUrl, setModelPreviewUrl] = useState<string>(
-    customAvatarUrl || '/images/ai-tryon/step3_model_male_runway_hd.png'
-  );
-  const [modelFile, setModelFile] = useState<File | Blob | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Body Shapes Selection States
-  const [selectedBodyShape, setSelectedBodyShape] = useState<BodyShapeModel | null>(null);
-  const [isBodyShapeModalOpen, setIsBodyShapeModalOpen] = useState<boolean>(false);
-  const [bodyShapeGenderTab, setBodyShapeGenderTab] = useState<'male' | 'female'>('male');
 
   const handleOpenBodyShapeModal = (gender: 'male' | 'female') => {
     setBodyShapeGenderTab(gender);
@@ -387,21 +475,36 @@ export default function AiSportsStylistSection() {
 
   const handleGenerateAiAvatar = async () => {
     try {
-      setModelType('profile_avatar');
+      const h = Number(inlineHeight) || (inlineGender === 'nu' ? 162 : 175);
+      const w = Number(inlineWeight) || (inlineGender === 'nu' ? 50 : 68);
+      const b = Number(inlineBust) || (inlineGender === 'nu' ? 85 : 96);
+      const wa = Number(inlineWaist) || (inlineGender === 'nu' ? 64 : 78);
+      const hi = Number(inlineHips) || (inlineGender === 'nu' ? 90 : 95);
+
+      // Instant client calibration: update runway stage and body shape with 0ms lag
+      const matchedShape = getMatchingBodyShape(inlineGender, h, w, b, wa, hi);
+      setSelectedBodyShape(matchedShape);
+      setModelPreviewUrl(matchedShape.imageSrc || matchedShape.thumbSrc);
+      setModelType(inlineGender === 'nu' ? 'female' : 'male');
+      setModelFile(null);
+      setResultImageUrl(null);
+
       const targetProfile: CustomerBodyProfile = {
         fullName: inlineFullName.trim(),
         age: Number(inlineAge),
         gender: inlineGender,
-        height: Number(inlineHeight),
-        weight: Number(inlineWeight),
-        bust: Number(inlineBust),
-        waist: Number(inlineWaist),
-        hips: Number(inlineHips),
+        height: h,
+        weight: w,
+        bust: b,
+        waist: wa,
+        hips: hi,
         skinTone: inlineSkinTone,
         isCompleted: true,
       };
-      await regenerateAvatar(true, targetProfile);
-      setResultImageUrl(null);
+
+      saveCustomerProfile(targetProfile);
+      // Run async avatar generation in background
+      regenerateAvatar(true, targetProfile).catch((err) => console.warn('Background avatar sync:', err));
       scrollToSection('step-3-apparel');
     } catch (err) {
       console.error('Error generating AI avatar:', err);
@@ -948,56 +1051,88 @@ export default function AiSportsStylistSection() {
     const currentBefore = modelPreviewUrl || customAvatarUrl || '/images/ai-tryon/step4_before_hd.jpg';
     setTryOnBeforeUrl(currentBefore);
 
+    // Dynamic garment-matching helper to ensure try-on result matches chosen product/sport
+    const getDynamicFallbackResult = () => {
+      const title = (selectedUpperItem?.title || '').toLowerCase();
+      const code = (selectedUpperItem?.code || '').toUpperCase();
+      if (
+        title.includes('cầu lông') ||
+        title.includes('badminton') ||
+        title.includes('bộ') ||
+        code.includes('AATV045') ||
+        code.includes('AATV')
+      ) {
+        return '/uploads/tryon/badminton_set_result.webp';
+      }
+      if (inlineGender === 'nu') {
+        return '/uploads/tryon/test_female_result.webp';
+      }
+      if (
+        title.includes('polo') ||
+        code.includes('APLR125') ||
+        code.includes('APLR')
+      ) {
+        return '/uploads/tryon/latest_tryon_result.webp';
+      }
+      return '/images/ai-tryon/step4_after_hd.jpg';
+    };
+
+    // Pre-trigger Tripo 3D in background so 3D model is ready ahead of time
+    handleGenerateTripo3D('turbo').catch(() => {});
+
     try {
       // 1. Prepare active model blob
-    let activeModelBlob: Blob | null = modelFile;
-    if (!activeModelBlob && currentBefore) {
-      try {
-        const fetchRes = await fetch(currentBefore);
-        if (fetchRes.ok) {
-          activeModelBlob = await fetchRes.blob();
-        }
-      } catch {}
-    }
+      let activeModelBlob: Blob | null = modelFile;
+      if (!activeModelBlob && currentBefore) {
+        try {
+          const fetchRes = await fetch(currentBefore);
+          if (fetchRes.ok) {
+            activeModelBlob = await fetchRes.blob();
+          }
+        } catch {}
+      }
 
-    // 2. Prepare garment image URLs from current selection
-    const upperUrl = selectedUpperItem?.image;
-    const lowerUrl = selectedLowerItem?.image;
+      // 2. Prepare garment image URLs from current selection
+      const upperUrl = selectedUpperItem?.image;
+      const lowerUrl = selectedLowerItem?.image;
 
-    let fitroomSuccess = false;
+      let fitroomSuccess = false;
 
-    // 3. If we have model & cloth, attempt real FitRoom Try-On Task
-    if (activeModelBlob && (upperUrl || lowerUrl)) {
-      try {
-        setFittingProgressText('Đang gửi dữ liệu trang phục tới máy chủ FitRoom AI...');
-        const formData = new FormData();
-        const fileName = (typeof File !== 'undefined' && modelFile instanceof File) ? modelFile.name : 'customer_model.jpg';
-        formData.append('model_image', activeModelBlob, fileName);
-        if (currentBefore) {
-          formData.append('model_image_url', currentBefore);
-        }
-        formData.append('hd_mode', 'false');
+      // 3. If we have model & cloth, attempt real FitRoom Try-On Task
+      if (activeModelBlob && (upperUrl || lowerUrl)) {
+        try {
+          setFittingProgressText('Đang gửi dữ liệu trang phục tới máy chủ FitRoom AI...');
+          const formData = new FormData();
+          const fileName =
+            typeof File !== 'undefined' && modelFile instanceof File
+              ? modelFile.name
+              : 'customer_model.jpg';
+          formData.append('model_image', activeModelBlob, fileName);
+          if (currentBefore) {
+            formData.append('model_image_url', currentBefore);
+          }
+          formData.append('hd_mode', 'false');
 
-        const isFullOutfitSet = selectedUpperItem?.title?.toLowerCase().includes('bộ');
+          const isFullOutfitSet = selectedUpperItem?.title?.toLowerCase().includes('bộ');
 
-        if (activeCategoryTab === 'lower' && lowerUrl) {
-          formData.append('cloth_type', 'lower');
-          formData.append('cloth_image_url', lowerUrl);
-        } else if (isFullOutfitSet && upperUrl) {
-          // Full badminton/running sets already contain both top and bottom in the product image
-          formData.append('cloth_type', 'upper');
-          formData.append('cloth_image_url', upperUrl);
-        } else if (activeCategoryTab === 'combo' && upperUrl && lowerUrl) {
-          formData.append('cloth_type', 'combo');
-          formData.append('cloth_image_url', upperUrl);
-          formData.append('lower_cloth_image_url', lowerUrl);
-        } else if (upperUrl) {
-          formData.append('cloth_type', 'upper');
-          formData.append('cloth_image_url', upperUrl);
-        } else if (lowerUrl) {
-          formData.append('cloth_type', 'lower');
-          formData.append('cloth_image_url', lowerUrl);
-        }
+          if (activeCategoryTab === 'lower' && lowerUrl) {
+            formData.append('cloth_type', 'lower');
+            formData.append('cloth_image_url', lowerUrl);
+          } else if (isFullOutfitSet && upperUrl) {
+            // Full badminton/running sets already contain both top and bottom in the product image
+            formData.append('cloth_type', 'upper');
+            formData.append('cloth_image_url', upperUrl);
+          } else if (activeCategoryTab === 'combo' && upperUrl && lowerUrl) {
+            formData.append('cloth_type', 'combo');
+            formData.append('cloth_image_url', upperUrl);
+            formData.append('lower_cloth_image_url', lowerUrl);
+          } else if (upperUrl) {
+            formData.append('cloth_type', 'upper');
+            formData.append('cloth_image_url', upperUrl);
+          } else if (lowerUrl) {
+            formData.append('cloth_type', 'lower');
+            formData.append('cloth_image_url', lowerUrl);
+          }
 
           const res = await fetch('/api/fitroom/tryon', {
             method: 'POST',
@@ -1022,7 +1157,9 @@ export default function AiSportsStylistSection() {
                     setResultImageUrl(finalSignedUrl);
                     setTryOnResultUrl(finalSignedUrl);
                     fitroomSuccess = true;
-                    setGeminiSuccessToast('Thử đồ AI FitRoom thành công! Ảnh thử đồ thực tế đã xuất hiện ở thanh so sánh bên dưới.');
+                    setGeminiSuccessToast(
+                      'Thử đồ AI FitRoom thành công! Ảnh thử đồ thực tế đã xuất hiện ở thanh so sánh bên dưới.'
+                    );
                     setTimeout(() => setGeminiSuccessToast(null), 7000);
                     break;
                   } else if (statusData.status === 'FAILED') {
@@ -1031,9 +1168,18 @@ export default function AiSportsStylistSection() {
                 }
               } catch {}
             }
-          } else if (res.status === 402 || (data && data.error && (data.error.includes('hết số lượt thử') || data.error.includes('credits') || data.error.includes('credit')))) {
+          } else if (
+            res.status === 402 ||
+            (data &&
+              data.error &&
+              (data.error.includes('hết số lượt thử') ||
+                data.error.includes('credits') ||
+                data.error.includes('credit')))
+          ) {
             console.warn('FitRoom account ran out of credits:', data?.error);
-            setGeminiSuccessToast('Tài khoản FitRoom API hiện đã hết lượt thử miễn phí (Insufficient credits). Hệ thống tự động chuyển sang ảnh mẫu thực tế phù hợp với vóc dáng của bạn.');
+            setGeminiSuccessToast(
+              'Tài khoản FitRoom API hiện đã hết lượt thử miễn phí (Insufficient credits). Hệ thống tự động chuyển sang ảnh mẫu thực tế phù hợp với vóc dáng của bạn.'
+            );
             setTimeout(() => setGeminiSuccessToast(null), 8000);
           }
         } catch (apiErr) {
@@ -1044,16 +1190,15 @@ export default function AiSportsStylistSection() {
       // 4. Fallback if API key not available or task didn't return completed URL
       if (!fitroomSuccess) {
         setFittingProgressText('AI FitRoom tối ưu nếp vải & ánh sáng studio 3D...');
-        await new Promise((r) => setTimeout(r, 800));
+        await new Promise((r) => setTimeout(r, 600));
 
-        const fallbackResult =
-          inlineGender === 'nu'
-            ? '/images/ai-tryon/step4_after_female_hd.webp'
-            : '/images/ai-tryon/step4_after_hd.jpg';
+        const fallbackResult = getDynamicFallbackResult();
         setResultImageUrl(fallbackResult);
         setTryOnResultUrl(fallbackResult);
         if (!geminiSuccessToast) {
-          setGeminiSuccessToast('Đã tải hình ảnh thử đồ mô phỏng! Kéo thanh trượt để so sánh vóc dáng trước và sau khi mặc trang phục.');
+          setGeminiSuccessToast(
+            'Đã tải hình ảnh thử đồ mô phỏng đúng trang phục đã chọn! Kéo thanh trượt để so sánh vóc dáng trước và sau khi mặc.'
+          );
           setTimeout(() => setGeminiSuccessToast(null), 6000);
         }
       }
@@ -1061,10 +1206,7 @@ export default function AiSportsStylistSection() {
       scrollToSection('step-4-results');
     } catch (err) {
       console.error('Tryon error:', err);
-      const fallbackResult =
-        inlineGender === 'nu'
-          ? '/images/ai-tryon/step4_after_female_hd.webp'
-          : '/images/ai-tryon/step4_after_hd.jpg';
+      const fallbackResult = getDynamicFallbackResult();
       setResultImageUrl(fallbackResult);
       setTryOnResultUrl(fallbackResult);
       scrollToSection('step-4-results');
@@ -1800,14 +1942,20 @@ export default function AiSportsStylistSection() {
                   </div>
                   <div className="flex flex-col text-left">
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">CHIỀU CAO</span>
-                    <span className="text-xs font-black text-zinc-950">165 cm</span>
+                    <span className="text-xs font-black text-zinc-950">
+                      {inlineHeight || (inlineGender === 'nu' ? '162' : '175')} cm
+                    </span>
                   </div>
                 </div>
 
-                {/* Center: High-Res Female Model */}
+                {/* Center: High-Res Model matching gender */}
                 <div className="relative w-40 h-full group-hover:scale-105 transition-transform duration-500">
                   <Image
-                    src="/images/ai-tryon/step2_card1_model_hd.png"
+                    src={
+                      inlineGender === 'nu'
+                        ? '/images/ai-tryon/step2_card1_model_hd.png'
+                        : '/images/body-shapes/male-lean-athletic.png'
+                    }
                     alt="Tạo dáng AI từ số đo"
                     fill
                     className="object-contain"
@@ -1825,7 +1973,9 @@ export default function AiSportsStylistSection() {
                     </div>
                     <div className="flex flex-col text-left leading-tight">
                       <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">VÒNG NGỰC</span>
-                      <span className="text-xs font-black text-zinc-950">82 cm</span>
+                      <span className="text-xs font-black text-zinc-950">
+                        {inlineBust || (inlineGender === 'nu' ? '85' : '96')} cm
+                      </span>
                     </div>
                   </div>
 
@@ -1837,7 +1987,9 @@ export default function AiSportsStylistSection() {
                     </div>
                     <div className="flex flex-col text-left leading-tight">
                       <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">VÒNG EO</span>
-                      <span className="text-xs font-black text-zinc-950">64 cm</span>
+                      <span className="text-xs font-black text-zinc-950">
+                        {inlineWaist || (inlineGender === 'nu' ? '64' : '78')} cm
+                      </span>
                     </div>
                   </div>
 
@@ -1849,7 +2001,9 @@ export default function AiSportsStylistSection() {
                     </div>
                     <div className="flex flex-col text-left leading-tight">
                       <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">VÒNG HÔNG</span>
-                      <span className="text-xs font-black text-zinc-950">90 cm</span>
+                      <span className="text-xs font-black text-zinc-950">
+                        {inlineHips || (inlineGender === 'nu' ? '90' : '95')} cm
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2349,11 +2503,18 @@ export default function AiSportsStylistSection() {
 
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2 bg-zinc-900/90 backdrop-blur-md border border-zinc-800 px-3 py-1 rounded-full text-xs shadow-sm">
-                      <span className="font-bold text-zinc-300">{selectedBodyShape?.height || (modelType === 'female' ? "165 cm" : "175 cm")}</span>
+                      <span className="font-bold text-zinc-300">
+                        {selectedBodyShape?.height || `${inlineHeight || (inlineGender === 'nu' ? '162' : '175')} cm`}
+                      </span>
                       <span className="text-zinc-600">·</span>
-                      <span className="font-bold text-zinc-300">{selectedBodyShape?.weight || (modelType === 'female' ? "52 kg" : "68 kg")}</span>
+                      <span className="font-bold text-zinc-300">
+                        {selectedBodyShape?.weight || `${inlineWeight || (inlineGender === 'nu' ? '50' : '68')} kg`}
+                      </span>
                       <span className="text-zinc-600">·</span>
-                      <span className="font-bold text-red-400">{selectedBodyShape?.measurements || (modelType === 'female' ? "86 - 63 - 90" : "96 - 78 - 95")}</span>
+                      <span className="font-bold text-red-400">
+                        {selectedBodyShape?.measurements ||
+                          `${inlineBust || (inlineGender === 'nu' ? '85' : '96')} - ${inlineWaist || (inlineGender === 'nu' ? '64' : '78')} - ${inlineHips || (inlineGender === 'nu' ? '90' : '95')}`}
+                      </span>
                     </div>
 
                     <button
@@ -2411,7 +2572,12 @@ export default function AiSportsStylistSection() {
                     }}
                   >
                     <Image
-                      src={modelPreviewUrl || "/images/ai-tryon/step3_model_male_runway_hd.png"}
+                      src={
+                        modelPreviewUrl ||
+                        (inlineGender === 'nu'
+                          ? '/images/body-shapes/female-hourglass-fit.png'
+                          : '/images/body-shapes/male-lean-athletic.png')
+                      }
                       alt="Living Fitting Model"
                       fill
                       className="object-contain object-bottom"

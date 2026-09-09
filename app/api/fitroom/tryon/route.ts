@@ -29,19 +29,14 @@ async function fetchRemoteImageBlob(url: string, label: string): Promise<Blob> {
     } catch {}
   }
 
-  if (pathname.startsWith('/') || !pathname.startsWith('http')) {
-    const cleanPath = pathname.startsWith('/') ? pathname.slice(1) : pathname;
-    const localPath = path.join(process.cwd(), 'public', cleanPath);
-    if (fs.existsSync(localPath)) {
-      const buffer = fs.readFileSync(localPath);
-      const ext = path.extname(localPath).toLowerCase();
-      const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
-      return new Blob([buffer], { type: mime });
-    }
+  let fullUrl = url;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || 'https://lining.id.vn';
+    fullUrl = new URL(url.startsWith('/') ? url : `/${url}`, origin).toString();
   }
 
   // 3. Remote HTTP URL
-  const response = await fetch(url, {
+  const response = await fetch(fullUrl, {
     headers: {
       'User-Agent': 'LiNing-VirtualTryOn/1.0',
     },
