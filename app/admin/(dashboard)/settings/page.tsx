@@ -9,6 +9,8 @@ interface ProviderInfo {
   maskedKey: string;
   source: 'database' | 'environment' | 'none';
   updatedAt: string | null;
+  hasAccountId?: boolean;
+  maskedAccountId?: string;
 }
 
 const PROVIDER_METADATA: Record<
@@ -46,7 +48,7 @@ const PROVIDER_METADATA: Record<
     icon: '⚡',
     title: 'Cloudflare Workers AI',
     category: 'Edge Model Generator',
-    description: 'Dự phòng tạo ảnh người mẫu tốc độ cao trên mạng lưới biên Cloudflare.',
+    description: 'Dự phòng tạo ảnh người mẫu tốc độ cao trên mạng lưới biên Cloudflare (Yêu cầu API Token & Account ID).',
     docsUrl: 'https://dash.cloudflare.com/',
   },
   alibaba: {
@@ -75,6 +77,7 @@ export default function AdminSettingsPage() {
   const [loadingProviders, setLoadingProviders] = useState(true);
   const [editingProvider, setEditingProvider] = useState<ProviderInfo | null>(null);
   const [newApiKeyInput, setNewApiKeyInput] = useState('');
+  const [accountIdInput, setAccountIdInput] = useState('');
   const [savingKey, setSavingKey] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
@@ -105,42 +108,59 @@ export default function AdminSettingsPage() {
   const handleOpenChangeModal = (provider: ProviderInfo) => {
     setEditingProvider(provider);
     setNewApiKeyInput(''); // NEVER preload old keys
+    setAccountIdInput('');
     setSaveErrorMsg(null);
   };
 
   const handleCloseChangeModal = () => {
     setEditingProvider(null);
     setNewApiKeyInput('');
+    setAccountIdInput('');
     setSaveErrorMsg(null);
   };
 
   const handleSaveNewKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProvider || !newApiKeyInput.trim()) return;
+    if (!editingProvider) return;
+
+    const isCloudflare = editingProvider.provider === 'cloudflare';
+    if (!isCloudflare && !newApiKeyInput.trim()) return;
+    if (isCloudflare && !newApiKeyInput.trim() && !accountIdInput.trim()) {
+      setSaveErrorMsg('Vui lòng nhập API Token hoặc Account ID');
+      return;
+    }
 
     setSavingKey(true);
     setSaveErrorMsg(null);
     setSaveSuccessMsg(null);
 
     try {
+      const payload: any = {
+        provider: editingProvider.provider,
+      };
+      if (newApiKeyInput.trim()) {
+        payload.newApiKey = newApiKeyInput.trim();
+      }
+      if (isCloudflare && accountIdInput.trim()) {
+        payload.accountId = accountIdInput.trim();
+      }
+
       const res = await fetch('/api/admin/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: editingProvider.provider,
-          newApiKey: newApiKeyInput.trim(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = (await res.json()) as any;
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Không thể lưu khóa API');
+        throw new Error(data.error || 'Không thể lưu cấu hình API');
       }
 
       setSaveSuccessMsg(
-        `Đã cập nhật và mã hóa AES-256-GCM khóa API cho "${editingProvider.name}" thành công!`
+        `Đã cập nhật và mã hóa an toàn cấu hình cho "${editingProvider.name}" thành công!`
       );
       setNewApiKeyInput('');
+      setAccountIdInput('');
       setEditingProvider(null);
       await fetchProviders();
       setTimeout(() => setSaveSuccessMsg(null), 5000);
@@ -318,11 +338,29 @@ export default function AdminSettingsPage() {
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-gray-500 font-medium">Khóa API:</span>
-                      <code className="px-2.5 py-1 bg-gray-50 border border-gray-200 rounded font-mono text-xs font-bold text-gray-800 tracking-wider">
-                        {p.maskedKey}
-                      </code>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-gray-500 font-medium">Khóa API:</span>
+                        <code className="px-2.5 py-1 bg-gray-50 border border-gray-200 rounded font-mono text-xs font-bold text-gray-800 tracking-wider">
+                          {p.maskedKey}
+                        </code>
+                      </div>
+
+                      {p.provider === 'cloudflare' && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-gray-500 font-medium">Account ID:</span>
+                          {p.hasAccountId ? (
+                            <code className="px-2.5 py-1 bg-purple-50 border border-purple-200 rounded font-mono text-xs font-bold text-purple-900 tracking-wider">
+                              {p.maskedAccountId}
+                            </code>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                              <span>⚠️</span> Chưa điền Account ID
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       {p.updatedAt && (
                         <span className="text-[10px] text-gray-400">
                           (Cập nhật: {new Date(p.updatedAt).toLocaleDateString('vi-VN')})
@@ -356,7 +394,7 @@ export default function AdminSettingsPage() {
                         className="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
                       >
                         <span>✏️</span>
-                        <span>Đổi khóa API</span>
+                        <span>{p.provider === 'cloudflare' ? 'Cấu hình Cloudflare' : 'Đổi khóa API'}</span>
                       </button>
 
                       {meta.docsUrl && meta.docsUrl !== '#' && (
@@ -409,7 +447,7 @@ export default function AdminSettingsPage() {
                   Bảo mật cấp cao • AES-256-GCM
                 </div>
                 <h3 className="text-base font-black text-gray-950 uppercase tracking-tight">
-                  CẬP NHẬT KHÓA API: {editingProvider.name}
+                  CẬP NHẬT CẤU HÌNH: {editingProvider.name}
                 </h3>
               </div>
               <button
@@ -423,7 +461,7 @@ export default function AdminSettingsPage() {
             </div>
 
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
-              🔒 <strong>Quy tắc bảo mật:</strong> Khóa API cũ sẽ không bao giờ được gửi lại cho trình duyệt để tránh bị đánh cắp. Hãy dán khóa API mới vào ô bên dưới. Khóa sẽ được mã hóa trước khi lưu vào cơ sở dữ liệu.
+              🔒 <strong>Quy tắc bảo mật:</strong> Dữ liệu được mã hóa an toàn bằng chuẩn AES-256-GCM trước khi lưu vào cơ sở dữ liệu. Không bao giờ gửi lộ bí mật ra client.
             </div>
 
             {saveErrorMsg && (
@@ -434,23 +472,61 @@ export default function AdminSettingsPage() {
             )}
 
             <form onSubmit={handleSaveNewKey} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Khóa API mới (New API Key):
-                </label>
-                <input
-                  type="password"
-                  autoFocus
-                  required
-                  value={newApiKeyInput}
-                  onChange={(e) => setNewApiKeyInput(e.target.value)}
-                  placeholder="Dán API Key mới vào đây (ví dụ: AIzaSy... hoặc sk-...)"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-mono text-gray-900 focus:ring-2 focus:ring-red-500 outline-none"
-                />
-                <span className="text-[11px] text-gray-400 mt-1 block">
-                  Chỉ lưu giá trị mới khi nhấn &quot;Mã hóa & Lưu khóa API&quot;.
-                </span>
-              </div>
+              {editingProvider.provider === 'cloudflare' ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                      <span>Cloudflare API Token (Bearer Token):</span>
+                      <span className="text-[10px] text-gray-400 font-normal">Để trống nếu chỉ đổi Account ID</span>
+                    </label>
+                    <input
+                      type="password"
+                      autoFocus
+                      value={newApiKeyInput}
+                      onChange={(e) => setNewApiKeyInput(e.target.value)}
+                      placeholder="Dán Cloudflare API Token mới..."
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-mono text-gray-900 focus:ring-2 focus:ring-red-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                      <span>Cloudflare Account ID (32 ký tự hex):</span>
+                      <span className="text-[10px] text-purple-700 font-bold bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded">
+                        Cần thiết cho Workers AI
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={accountIdInput}
+                      onChange={(e) => setAccountIdInput(e.target.value)}
+                      placeholder="Dán 32 ký tự Account ID (ví dụ: d4b893f187a...)"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-mono text-gray-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                    <span className="text-[11px] text-gray-500 mt-1.5 block leading-relaxed">
+                      💡 <strong>Nơi lấy Account ID:</strong> Đăng nhập <em>dash.cloudflare.com</em> &gt; vào mục <em>Workers &amp; Pages</em> &gt; xem mục <strong>Account ID</strong> ở thanh menu bên phải hoặc lấy trực tiếp chuỗi 32 ký tự trên thanh địa chỉ URL: <code>dash.cloudflare.com/[ACCOUNT_ID]/...</code>
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    Khóa API mới (New API Key):
+                  </label>
+                  <input
+                    type="password"
+                    autoFocus
+                    required
+                    value={newApiKeyInput}
+                    onChange={(e) => setNewApiKeyInput(e.target.value)}
+                    placeholder="Dán API Key mới vào đây (ví dụ: AIzaSy... hoặc sk-...)"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-mono text-gray-900 focus:ring-2 focus:ring-red-500 outline-none"
+                  />
+                  <span className="text-[11px] text-gray-400 mt-1 block">
+                    Chỉ lưu giá trị mới khi nhấn &quot;Mã hóa &amp; Lưu cấu hình&quot;.
+                  </span>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
                 <button
@@ -463,7 +539,12 @@ export default function AdminSettingsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={savingKey || !newApiKeyInput.trim()}
+                  disabled={
+                    savingKey ||
+                    (editingProvider.provider === 'cloudflare'
+                      ? !newApiKeyInput.trim() && !accountIdInput.trim()
+                      : !newApiKeyInput.trim())
+                  }
                   className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
                 >
                   {savingKey ? (
@@ -474,7 +555,7 @@ export default function AdminSettingsPage() {
                   ) : (
                     <>
                       <span>🔒</span>
-                      <span>Mã hóa & Lưu khóa API</span>
+                      <span>Mã hóa & Lưu Cấu Hình</span>
                     </>
                   )}
                 </button>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProviderApiKey } from '@/app/lib/api-keys/resolver';
+import { getProviderApiKey, getCloudflareAccountId } from '@/app/lib/api-keys/resolver';
 import {
   testFitRoomConnection,
   testTripoConnection,
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     const body = (await req.json()) as any;
     const provider = String(body.provider || body.type || '').trim().toLowerCase();
-    const accountId = body.accountId || process.env.CLOUDFLARE_ACCOUNT_ID;
+    const accountId = body.accountId || (await getCloudflareAccountId()) || process.env.CLOUDFLARE_ACCOUNT_ID;
     const endpoint = body.endpoint || process.env.ALIBABA_ENDPOINT;
     let apiKey = body.apiKey;
 

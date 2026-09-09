@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import sharp from 'sharp';
 import { AvatarGenerationParams, computeBodyMetrics } from '../fitroom/avatar-generator';
 import { SKIN_TONE_CONFIGS } from '../fitroom/color-advisor';
-import { getProviderApiKey } from '../api-keys/resolver';
+import { getProviderApiKey, getCloudflareAccountId } from '../api-keys/resolver';
 
 export interface CloudflareAiImageResult {
   success: boolean;
@@ -129,7 +129,7 @@ export async function generateAvatarWithCloudflareAI(
   forceRegenerate: boolean = false
 ): Promise<CloudflareAiImageResult> {
   const token = await getProviderApiKey('cloudflare');
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const accountId = (await getCloudflareAccountId()) || process.env.CLOUDFLARE_ACCOUNT_ID;
   const model = process.env.CLOUDFLARE_AI_MODEL || '@cf/black-forest-labs/flux-1-schnell';
 
   if (!token || !accountId) {

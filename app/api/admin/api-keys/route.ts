@@ -38,6 +38,8 @@ export async function GET(req: NextRequest) {
         maskedKey: p.maskedKey,
         source: p.source,
         updatedAt: p.updatedAt,
+        hasAccountId: p.hasAccountId,
+        maskedAccountId: p.maskedAccountId,
       })),
     });
   } catch (err: any) {
@@ -59,39 +61,59 @@ export async function POST(req: NextRequest) {
 
     const body = (await req.json()) as any;
     const provider = String(body.provider || '').trim().toLowerCase() as ApiProvider;
-    const newApiKey = String(body.newApiKey || '').trim();
+    const newApiKey = body.newApiKey !== undefined ? String(body.newApiKey).trim() : '';
+    const accountId = body.accountId !== undefined ? String(body.accountId).trim() : undefined;
 
-    if (!VALID_PROVIDERS.includes(provider)) {
+    if (!VALID_PROVIDERS.includes(provider) && provider !== ('cloudflare_account_id' as any)) {
       return NextResponse.json(
         { success: false, error: `Nhà cung cấp không hợp lệ. Hỗ trợ: ${VALID_PROVIDERS.join(', ')}` },
         { status: 400 }
       );
     }
 
-    if (!newApiKey || newApiKey.length < 4) {
+    let savedKey = false;
+    let savedAccountId = false;
+
+    // 1. Update API Key if provided
+    if (newApiKey) {
+      if (newApiKey.length < 4) {
+        return NextResponse.json(
+          { success: false, error: 'Khóa API mới không hợp lệ hoặc quá ngắn (tối thiểu 4 ký tự)' },
+          { status: 400 }
+        );
+      }
+      const encryptedValue = encryptSecret(newApiKey);
+      const lastFour = newApiKey.slice(-4);
+      await upsertDbCredential(provider, encryptedValue, lastFour, true);
+      savedKey = true;
+    }
+
+    // 2. Update Cloudflare Account ID if provided
+    if (provider === 'cloudflare' && accountId !== undefined) {
+      if (accountId.length > 0) {
+        if (accountId.length < 6) {
+          return NextResponse.json(
+            { success: false, error: 'Account ID không hợp lệ hoặc quá ngắn' },
+            { status: 400 }
+          );
+        }
+        const encAccountId = encryptSecret(accountId);
+        const lastFourAcc = accountId.slice(-4);
+        await upsertDbCredential('cloudflare_account_id', encAccountId, lastFourAcc, true);
+        savedAccountId = true;
+      }
+    }
+
+    if (!savedKey && !savedAccountId) {
       return NextResponse.json(
-        { success: false, error: 'Khóa API mới không hợp lệ hoặc quá ngắn (tối thiểu 4 ký tự)' },
+        { success: false, error: 'Vui lòng cung cấp khóa API mới hoặc Account ID để cập nhật' },
         { status: 400 }
       );
     }
 
-    // 1. Encrypt with AES-256-GCM
-    const encryptedValue = encryptSecret(newApiKey);
-    const lastFour = newApiKey.slice(-4);
-
-    // 2. Persist to Database table api_credentials
-    const saved = await upsertDbCredential(provider, encryptedValue, lastFour, true);
-
-    // 3. Return only masked response, never raw key
     return NextResponse.json({
       success: true,
-      message: `Đã lưu và mã hóa khóa API cho ${provider} thành công`,
-      data: {
-        provider: saved.provider,
-        configured: true,
-        maskedKey: maskSecret(lastFour),
-        updatedAt: saved.updated_at.toISOString(),
-      },
+      message: `Đã lưu và mã hóa cấu hình an toàn cho ${provider} thành công`,
     });
   } catch (err: any) {
     return NextResponse.json(

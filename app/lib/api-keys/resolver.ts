@@ -49,6 +49,32 @@ export async function getProviderApiKey(provider: string): Promise<string | null
   return null;
 }
 
+/**
+ * Resolves Cloudflare Account ID:
+ * 1. Check database credential (provider = 'cloudflare_account_id')
+ * 2. Fallback to process.env.CLOUDFLARE_ACCOUNT_ID
+ */
+export async function getCloudflareAccountId(): Promise<string | null> {
+  try {
+    const cred = await getDbCredential('cloudflare_account_id');
+    if (cred && cred.is_configured && cred.encrypted_value) {
+      const decrypted = decryptSecret(cred.encrypted_value);
+      if (decrypted && decrypted.trim()) {
+        return decrypted.trim();
+      }
+    }
+  } catch (err: any) {
+    console.error('[KeyResolver] Failed to read DB cloudflare_account_id:', err.message);
+  }
+
+  const envVal = process.env.CLOUDFLARE_ACCOUNT_ID;
+  if (envVal && envVal.trim()) {
+    return envVal.trim();
+  }
+
+  return null;
+}
+
 export interface ProviderStatusInfo {
   provider: ApiProvider;
   name: string;
@@ -56,6 +82,8 @@ export interface ProviderStatusInfo {
   maskedKey: string;
   source: 'database' | 'environment' | 'none';
   updatedAt: string | null;
+  hasAccountId?: boolean;
+  maskedAccountId?: string;
 }
 
 /**
@@ -77,6 +105,8 @@ export async function getAdminProviderStatuses(): Promise<ProviderStatusInfo[]> 
     let maskedKey = '';
     let source: 'database' | 'environment' | 'none' = 'none';
     let updatedAt: string | null = null;
+    let hasAccountId: boolean | undefined = undefined;
+    let maskedAccountId: string | undefined = undefined;
 
     try {
       const cred = await getDbCredential(p.id);
@@ -98,6 +128,17 @@ export async function getAdminProviderStatuses(): Promise<ProviderStatusInfo[]> 
       }
     }
 
+    if (p.id === 'cloudflare') {
+      const accId = await getCloudflareAccountId();
+      if (accId && accId.trim()) {
+        hasAccountId = true;
+        maskedAccountId = maskSecret(accId.trim().slice(-4));
+      } else {
+        hasAccountId = false;
+        maskedAccountId = '';
+      }
+    }
+
     results.push({
       provider: p.id,
       name: p.name,
@@ -105,6 +146,8 @@ export async function getAdminProviderStatuses(): Promise<ProviderStatusInfo[]> 
       maskedKey,
       source,
       updatedAt,
+      hasAccountId,
+      maskedAccountId,
     });
   }
 
