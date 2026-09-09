@@ -135,7 +135,12 @@ export const navigation: NavItem[] = [
       {
         title: 'VÁY - CHÂN VÁY',
         href: '/collections/vay-chan-vay',
-        children: []
+        children: [
+          { title: 'Chân váy cầu lông', href: '/collections/vay-chan-vay' },
+          { title: 'Chân váy pickleball', href: '/collections/vay-chan-vay' },
+          { title: 'Chân váy tennis', href: '/collections/vay-chan-vay' },
+          { title: 'Váy liền thể thao', href: '/collections/vay-chan-vay' },
+        ]
       },
       {
         title: 'BỘ QUẦN ÁO',

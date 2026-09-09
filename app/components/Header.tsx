@@ -116,71 +116,97 @@ export default function Header() {
                 return (
                   <li
                     key={item.title}
-                    className="relative h-full flex items-center z-[110]"
+                    className={cn("h-full flex items-center z-[110]", !hasMegaMenu && "relative")}
                     onMouseEnter={() => item.children && openDesktopDropdown(item.title)}
                     onMouseLeave={closeDesktopDropdown}
                     onFocus={() => item.children && openDesktopDropdown(item.title)}
                     onBlur={closeDesktopDropdown}
                   >
-                    <Link href={item.href} onClick={() => setOpenDesktopMenu(null)} className="text-[#111111] hover:text-brand font-medium text-[15px] uppercase flex items-center gap-1">
+                    <Link
+                      href={item.href}
+                      onClick={() => setOpenDesktopMenu(null)}
+                      className={cn(
+                        "font-medium text-[15px] uppercase flex items-center gap-1 transition-colors py-2",
+                        isOpen ? "text-brand font-semibold" : "text-[#111111] hover:text-brand"
+                      )}
+                    >
                       {item.title}
                       {item.children && (
-                        <CaretDown weight="bold" className={cn("w-4 h-4 transition-transform duration-200", isOpen && "rotate-180")} />
+                        <CaretDown
+                          weight="bold"
+                          className={cn("w-3.5 h-3.5 transition-transform duration-200", isOpen && "rotate-180 text-brand")}
+                        />
                       )}
                     </Link>
 
                     {/* Desktop Dropdowns */}
                     {item.children && (
                       hasMegaMenu ? (
-                        /* Multi-column Mega Menu (NAM, NỮ) */
+                        /* Multi-column Mega Menu (NAM, NỮ) - Full-width container dropdown */
                         <div
                           className={cn(
-                            "absolute top-[calc(100%-1px)] left-1/2 -translate-x-1/2 bg-white shadow-xl border-t-2 border-brand transition-all duration-200 w-[850px] max-w-[90vw] p-6 z-[200] rounded-b-sm",
-                            isOpen ? "opacity-100 visible pointer-events-auto mt-0" : "opacity-0 invisible pointer-events-none -mt-1"
+                            "absolute top-full left-0 w-full bg-white shadow-2xl border-t-2 border-brand transition-all duration-200 z-[200]",
+                            isOpen ? "opacity-100 visible pointer-events-auto" : "opacity-0 invisible pointer-events-none"
                           )}
                           onMouseEnter={() => openDesktopDropdown(item.title)}
                           onMouseLeave={closeDesktopDropdown}
                         >
-                          <div className="absolute -top-6 left-0 right-0 h-6" aria-hidden="true" />
-                          <div className="grid grid-cols-5 gap-6">
-                            {item.children.map((child, idx) => (
-                              <div key={idx} className="flex flex-col">
-                                <Link href={child.href} onClick={() => setOpenDesktopMenu(null)} className="font-bold text-[#111111] mb-2.5 hover:text-brand uppercase text-sm border-b pb-1 rounded-sm">
-                                  {child.title}
-                                </Link>
-                                {child.children && (
-                                  <ul className="flex flex-col space-y-1.5">
-                                    {child.children.map((subChild, subIdx) => (
-                                      <li key={subIdx}>
-                                        <Link href={subChild.href} onClick={() => setOpenDesktopMenu(null)} className="text-gray-600 hover:text-brand text-xs transition-colors block py-0.5 rounded-sm">
-                                          {subChild.title}
-                                        </Link>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            ))}
+                          <div className="absolute -top-3 left-0 right-0 h-3" aria-hidden="true" />
+                          <div className="container mx-auto px-6 py-8">
+                            <div
+                              className={cn(
+                                "grid gap-8",
+                                item.children.length >= 6 ? "grid-cols-6" : "grid-cols-5"
+                              )}
+                            >
+                              {item.children.map((child, idx) => (
+                                <div key={idx} className="flex flex-col">
+                                  <Link
+                                    href={child.href}
+                                    onClick={() => setOpenDesktopMenu(null)}
+                                    className="font-bold text-[#111111] mb-3 hover:text-brand uppercase text-sm border-b border-gray-100 pb-2 transition-colors flex items-center justify-between group"
+                                  >
+                                    <span>{child.title}</span>
+                                    <span className="text-[10px] text-gray-300 group-hover:text-brand transition-colors">›</span>
+                                  </Link>
+                                  {child.children && child.children.length > 0 && (
+                                    <ul className="flex flex-col space-y-2">
+                                      {child.children.map((subChild, subIdx) => (
+                                        <li key={subIdx}>
+                                          <Link
+                                            href={subChild.href}
+                                            onClick={() => setOpenDesktopMenu(null)}
+                                            className="text-gray-600 hover:text-brand hover:translate-x-1 text-[13px] transition-all block py-0.5"
+                                          >
+                                            {subChild.title}
+                                          </Link>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       ) : (
                         /* Single-column Dropdown */
                         <div
                           className={cn(
-                            "absolute top-[calc(100%-1px)] left-0 bg-white shadow-lg border-t-2 border-brand transition-all duration-200 min-w-[210px] py-2 z-[200] rounded-b-sm",
+                            "absolute top-full left-0 bg-white shadow-lg border-t-2 border-brand transition-all duration-200 min-w-[220px] py-2 z-[200] rounded-b-md",
                             isOpen ? "opacity-100 visible pointer-events-auto mt-0" : "opacity-0 invisible pointer-events-none -mt-1"
                           )}
                           onMouseEnter={() => openDesktopDropdown(item.title)}
                           onMouseLeave={closeDesktopDropdown}
                         >
-                          <div className="absolute -top-6 left-0 right-0 h-6" aria-hidden="true" />
+                          <div className="absolute -top-3 left-0 right-0 h-3" aria-hidden="true" />
                           <ul className="flex flex-col">
                             {item.children.map((child, idx) => (
                               <li key={idx}>
                                 <Link
                                   href={child.href}
                                   onClick={() => setOpenDesktopMenu(null)}
-                                  className="block px-4 py-2.5 text-sm text-gray-700 hover:text-brand hover:bg-gray-50 uppercase font-medium transition-colors border-b border-gray-50 last:border-0 rounded-sm"
+                                  className="block px-5 py-2.5 text-sm text-gray-700 hover:text-brand hover:bg-red-50/50 uppercase font-medium transition-colors border-b border-gray-50 last:border-0"
                                 >
                                   {child.title}
                                 </Link>
