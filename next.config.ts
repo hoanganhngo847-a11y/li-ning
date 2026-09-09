@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'product.hstatic.net' },
       { protocol: 'https', hostname: 'theme.hstatic.net' },
       { protocol: 'https', hostname: 'file.hstatic.net' },
+      { protocol: 'https', hostname: 'img.youtube.com' },
+      { protocol: 'https', hostname: 'i.ytimg.com' },
     ],
   },
 };

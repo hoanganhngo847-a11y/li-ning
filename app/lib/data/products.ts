@@ -886,21 +886,24 @@ const baseProducts: Product[] = [
   },
   {
     id: '47',
-    handle: 'quan-gio-nam-regular-fit',
-    title: 'Quần gió Nam Regular Fit P-AKLU047-1V',
-    price: 890000,
+    handle: 'quan-gio-nam-regular-fit-aykw339-2v',
+    title: 'Quần gió Nam Regular Fit AYKW339-2V',
+    price: 1168364,
     compareAtPrice: null,
-    images: ['https://cdn.hstatic.net/products/1000312752/p-acpw001-161v__1__54a9a53044f24b42abddb37389bc3bb5.jpg', 'https://cdn.hstatic.net/products/1000312752/p-acpw001-161v__2__e4a30179b2674a3492bcdea32f524bf1.jpg'],
+    images: [
+      'https://cdn.hstatic.net/products/1000312752/aykw339-2v__1__fc53f76d19ef42a7ab42b68ac122f2e9_a557cec8a6804b6ebb1ade52067c3563.jpg',
+      'https://cdn.hstatic.net/products/1000312752/aykw339-2v__2__172cfb47349440b1b50f82fbfea5dde8_7b7bced65ae8490c96b37a280d424401.jpg'
+    ],
     variants: [
-      { id: '47-1', title: 'M / Đen', size: 'M', color: 'Đen', available: true, price: 890000, compareAtPrice: null },
-      { id: '47-2', title: 'L / Đen', size: 'L', color: 'Đen', available: true, price: 890000, compareAtPrice: null },
-      { id: '47-3', title: 'XL / Đen', size: 'XL', color: 'Đen', available: true, price: 890000, compareAtPrice: null }
+      { id: '47-1', title: 'M / Đen', size: 'M', color: 'Đen', available: true, price: 1168364, compareAtPrice: null },
+      { id: '47-2', title: 'L / Đen', size: 'L', color: 'Đen', available: true, price: 1168364, compareAtPrice: null },
+      { id: '47-3', title: 'XL / Đen', size: 'XL', color: 'Đen', available: true, price: 1168364, compareAtPrice: null }
     ],
     collections: ['quan-gio-nam', 'quan-nam-2', 'nam-1', 'luyen-tap-1', 'thoi-trang'],
     sport: 'luyen-tap-1',
     gender: 'nam',
-    description: '<p>Quần gió nam dáng suông, nhẹ, dễ phối cùng áo khoác hoặc áo polo thể thao.</p>',
-    sku: 'P-AKLU047-1V',
+    description: '<p>Quần gió Nam Li-Ning dáng suông Regular Fit chính hãng. Chất liệu vải gió công nghệ cao nhẹ, cản gió, co giãn thoải mái, phom đứng thể thao.</p>',
+    sku: 'AYKW339-2V',
     available: true
   },
   {

@@ -2,9 +2,10 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'motion/react';
+import { ArrowRight } from '@phosphor-icons/react';
 import { Product } from '@/app/lib/types';
 import ProductCard from './ProductCard';
-import ScrollAnimate, { StaggerChildren } from './ScrollAnimate';
 import { cn } from '@/app/lib/utils';
 import { getProductsForCollection } from '@/app/lib/data/collectionMap';
 import { useProductsWithAdminProducts } from '@/app/lib/admin-products';
@@ -27,7 +28,7 @@ export default function HomeTabSection({ title, titleHref, tabs, allProducts }: 
   const { products: mergedProducts } = useProductsWithAdminProducts(allProducts);
 
   const displayProducts = useMemo(() => {
-    return getProductsForCollection(mergedProducts, activeTab).slice(0, 10);
+    return getProductsForCollection(mergedProducts, activeTab).slice(0, 9);
   }, [activeTab, mergedProducts]);
 
   if (!tabs.length) return null;
@@ -35,63 +36,81 @@ export default function HomeTabSection({ title, titleHref, tabs, allProducts }: 
   return (
     <section className="py-12 bg-white">
       <div className="container mx-auto px-4">
-        {/* Title */}
-        <ScrollAnimate animation="fade-up" duration={500}>
-          <div className="text-center mb-6">
-            <Link href={titleHref} className="inline-block group">
-              <h2 className="text-2xl md:text-3xl font-bold uppercase text-[#111111] group-hover:text-[#f30d29] transition-colors relative pb-2 after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-16 after:h-1 after:bg-[#f30d29]">
-                {title}
-              </h2>
-            </Link>
-          </div>
-        </ScrollAnimate>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <Link href={titleHref}>
+            <h2 className="text-2xl md:text-3xl font-bold uppercase text-dark hover:text-brand transition-colors">
+              {title}
+            </h2>
+          </Link>
+          <Link 
+            href={`/collections/${activeTab}`}
+            className="hidden md:flex items-center gap-1 text-sm font-medium text-dark hover:text-brand transition-colors active:scale-[0.98] transition-transform"
+          >
+            Xem tất cả
+            <ArrowRight size={16} weight="regular" />
+          </Link>
+        </div>
 
         {/* Tabs */}
-        <ScrollAnimate animation="fade-up" delay={100} duration={400}>
-          <div className="flex flex-wrap justify-center gap-2 mb-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.collectionHandle}
-                onClick={() => setActiveTab(tab.collectionHandle)}
-                className={cn(
-                  "px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 border cursor-pointer",
-                  activeTab === tab.collectionHandle
-                    ? "bg-[#f30d29] text-white border-[#f30d29]"
-                    : "bg-white text-gray-700 border-gray-300 hover:border-[#f30d29] hover:text-[#f30d29]"
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </ScrollAnimate>
-
-        {/* Product Grid */}
-        {displayProducts.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-5 mb-8">
-            <StaggerChildren animation="fade-up" staggerDelay={70} duration={450}>
-              {displayProducts.map(product => (
-                <ProductCard key={product.id || product.handle} product={product} />
-              ))}
-            </StaggerChildren>
-          </div>
-        ) : (
-          <div className="text-center text-gray-500 py-12">
-            Không có sản phẩm nào trong danh mục này.
-          </div>
-        )}
-
-        {/* View All Button */}
-        <ScrollAnimate animation="fade-up" duration={400}>
-          <div className="text-center">
-            <Link 
-              href={`/collections/${activeTab}`}
-              className="inline-block px-8 py-3 bg-white text-[#111111] border border-[#111111] rounded hover:bg-[#111111] hover:text-white transition-colors text-sm font-bold uppercase"
+        <div className="flex overflow-x-auto md:flex-wrap gap-2 mb-8 pb-2 md:pb-0">
+          {tabs.map((tab) => (
+            <button
+              key={tab.collectionHandle}
+              onClick={() => setActiveTab(tab.collectionHandle)}
+              className={cn(
+                "px-6 py-2 rounded-sm text-sm font-medium transition-all duration-300 border cursor-pointer whitespace-nowrap active:scale-[0.98]",
+                activeTab === tab.collectionHandle
+                  ? "bg-brand text-white border-brand"
+                  : "bg-transparent text-gray-600 border border-gray-border hover:border-brand"
+              )}
             >
-              Xem tất cả
-            </Link>
-          </div>
-        </ScrollAnimate>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Product Grid with Motion Fade */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {displayProducts.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                {displayProducts.map((product, i) => (
+                  <motion.div
+                    key={product.id || product.handle}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.5, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <ProductCard product={product} />
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-12">
+                Không có sản phẩm nào trong danh mục này.
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Mobile View All Button */}
+        <div className="md:hidden text-center mt-6">
+          <Link 
+            href={`/collections/${activeTab}`}
+            className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white text-dark border border-gray-border rounded-sm hover:border-brand hover:text-brand transition-colors text-sm font-bold uppercase active:scale-[0.98] transition-transform w-full"
+          >
+            Xem tất cả
+            <ArrowRight size={16} weight="regular" />
+          </Link>
+        </div>
       </div>
     </section>
   );

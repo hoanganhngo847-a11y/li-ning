@@ -8,9 +8,9 @@ import HomeTabSection from '@/app/components/HomeTabSection'
 import TrustBar from '@/app/components/TrustBar'
 import VideoSection from '@/app/components/VideoSection'
 import AnimatedProductSection from '@/app/components/AnimatedProductSection'
-import AiSportsStylist from '@/app/components/AiSportsStylist'
 
 export default function Home() {
+
   const summerCollectionTabs = [
     { label: 'ÁO', collectionHandle: 'ao-he' },
     { label: 'QUẦN', collectionHandle: 'quan-he' },
@@ -74,9 +74,6 @@ export default function Home() {
       />
 
       <TrustBar />
-
-      {/* LI-NING AI Sports Stylist Floating Card & Drawer */}
-      <AiSportsStylist targetId="home-product-section" />
     </main>
   )
 }

@@ -11,13 +11,14 @@ import { useCart } from '@/app/lib/cart-context'
 import Link from 'next/link'
 import { useProductsWithAdminProducts } from '@/app/lib/admin-products'
 import Product3DViewer from '@/app/components/Product3DViewer'
-import StylistConfigurator from '@/app/components/ai-sports-stylist/StylistConfigurator'
+import { useFitRoom } from '@/app/components/fitroom/FitRoomContext'
 
 export default function ProductDetailPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = use(params)
   const { products: allProducts, isLoaded } = useProductsWithAdminProducts(products)
   const product = allProducts.find(p => p.handle === handle)
   const { addItem } = useCart()
+  const { selectProductForTryOn } = useFitRoom()
   
   const [mainImage, setMainImage] = useState('')
   const [quantity, setQuantity] = useState(1)
@@ -353,17 +354,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ handle
               </div>
             </div>
 
-            {/* MẶC THỬ 3D TRÊN AVATAR */}
+            {/* THỬ ĐỒ BẰNG AI FITROOM */}
             <div className="mb-4">
               <button
                 type="button"
-                onClick={() => setIsTryOnOpen(true)}
+                onClick={() => product && selectProductForTryOn(product, true)}
                 className="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-gray-950 via-gray-900 to-gray-950 hover:from-black hover:to-black text-white font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg border border-gray-800 transition-all flex items-center justify-center gap-2.5 cursor-pointer group"
               >
-                <span className="text-base group-hover:scale-110 transition-transform">🧍‍♂️</span>
-                <span>MẶC THỬ 3D TRÊN AVATAR VÓC DÁNG</span>
+                <span className="text-base group-hover:scale-110 transition-transform">✨</span>
+                <span>THỬ ĐỒ BẰNG AI (VIRTUAL TRY-ON)</span>
                 <span className="px-2 py-0.5 rounded-full bg-[#f30d29] text-white text-[9.5px] font-mono font-bold">
-                  AI Stylist
+                  FitRoom AI
                 </span>
               </button>
             </div>
@@ -485,13 +486,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ handle
           </StaggerChildren>
         </div>
       )}
-
-      {/* 3D Virtual Try-On Modal */}
-      <StylistConfigurator
-        isOpen={isTryOnOpen}
-        onClose={() => setIsTryOnOpen(false)}
-        initialProduct={product}
-      />
     </div>
   )
 }

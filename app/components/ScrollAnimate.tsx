@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
+import { motion, useReducedMotion, type Variant } from 'motion/react';
 
 type AnimationType = 'fade-up' | 'fade-down' | 'fade-left' | 'fade-right' | 'zoom-in' | 'fade';
 
@@ -14,30 +15,30 @@ interface ScrollAnimateProps {
   once?: boolean; // only animate once
 }
 
-const animationStyles: Record<AnimationType, { from: React.CSSProperties; to: React.CSSProperties }> = {
+const animationVariants: Record<AnimationType, { hidden: Variant; visible: Variant }> = {
   'fade-up': {
-    from: { opacity: 0, transform: 'translateY(60px)' },
-    to: { opacity: 1, transform: 'translateY(0)' },
+    hidden: { opacity: 0, y: 60 },
+    visible: { opacity: 1, y: 0 },
   },
   'fade-down': {
-    from: { opacity: 0, transform: 'translateY(-60px)' },
-    to: { opacity: 1, transform: 'translateY(0)' },
+    hidden: { opacity: 0, y: -60 },
+    visible: { opacity: 1, y: 0 },
   },
   'fade-left': {
-    from: { opacity: 0, transform: 'translateX(-60px)' },
-    to: { opacity: 1, transform: 'translateX(0)' },
+    hidden: { opacity: 0, x: -60 },
+    visible: { opacity: 1, x: 0 },
   },
   'fade-right': {
-    from: { opacity: 0, transform: 'translateX(60px)' },
-    to: { opacity: 1, transform: 'translateX(0)' },
+    hidden: { opacity: 0, x: 60 },
+    visible: { opacity: 1, x: 0 },
   },
   'zoom-in': {
-    from: { opacity: 0, transform: 'scale(0.85)' },
-    to: { opacity: 1, transform: 'scale(1)' },
+    hidden: { opacity: 0, scale: 0.85 },
+    visible: { opacity: 1, scale: 1 },
   },
   'fade': {
-    from: { opacity: 0 },
-    to: { opacity: 1 },
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 },
   },
 };
 
@@ -46,54 +47,44 @@ export default function ScrollAnimate({
   animation = 'fade-up',
   delay = 0,
   duration = 600,
-  threshold = 0.15,
+  threshold = 0.3,
   className = '',
   once = true,
 }: ScrollAnimateProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+  if (shouldReduceMotion) {
+    return <div className={className}>{children}</div>;
+  }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          if (once) observer.unobserve(el);
-        } else if (!once) {
-          setIsVisible(false);
-        }
-      },
-      { threshold, rootMargin: '0px 0px -50px 0px' }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [threshold, once]);
-
-  const anim = animationStyles[animation];
-  const style: React.CSSProperties = {
-    ...(isVisible ? anim.to : anim.from),
-    transition: `all ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) ${delay}ms`,
-    willChange: 'opacity, transform',
-  };
-
+  const variants = animationVariants[animation];
+  
   return (
-    <div ref={ref} style={style} className={className}>
+    <motion.div
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once, amount: threshold }}
+      transition={{
+        duration: duration / 1000,
+        delay: delay / 1000,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      variants={variants}
+      className={className}
+    >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
-// Stagger wrapper: each child gets an increasing delay
 interface StaggerProps {
   children: React.ReactNode;
   animation?: AnimationType;
   staggerDelay?: number; // ms between each child
   duration?: number;
   className?: string;
+  threshold?: number;
+  once?: boolean;
 }
 
 export function StaggerChildren({
@@ -102,22 +93,47 @@ export function StaggerChildren({
   staggerDelay = 80,
   duration = 500,
   className = '',
+  threshold = 0.3,
+  once = true,
 }: StaggerProps) {
+  const shouldReduceMotion = useReducedMotion();
   const childArray = React.Children.toArray(children);
 
+  if (shouldReduceMotion) {
+    return <div className={className}>{children}</div>;
+  }
+
+  const containerVariants = {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: staggerDelay / 1000,
+      },
+    },
+  };
+
+  const itemVariants = animationVariants[animation];
+
   return (
-    <>
+    <motion.div
+      className={className}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once, amount: threshold }}
+      variants={containerVariants}
+    >
       {childArray.map((child, index) => (
-        <ScrollAnimate
+        <motion.div
           key={index}
-          animation={animation}
-          delay={index * staggerDelay}
-          duration={duration}
-          className={className}
+          variants={itemVariants}
+          transition={{
+            duration: duration / 1000,
+            ease: [0.16, 1, 0.3, 1],
+          }}
         >
           {child}
-        </ScrollAnimate>
+        </motion.div>
       ))}
-    </>
+    </motion.div>
   );
 }
