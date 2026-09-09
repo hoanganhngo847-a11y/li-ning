@@ -1023,14 +1023,14 @@ export default function AiSportsStylistSection() {
       } else {
         const errMsg = data.error || 'Không thể tạo ảnh AI lúc này. Vui lòng kiểm tra Gemini API key hoặc thử lại sau.';
         setGeminiError(errMsg);
-        setResultImageUrl('/images/ai-tryon/step4_after_hd.jpg');
+        setResultImageUrl(inlineGender === 'nu' ? '/images/ai-tryon/step4_after_female_hd.webp' : '/images/ai-tryon/step4_after_hd.jpg');
         scrollToSection('step-4-results');
       }
     } catch (err: any) {
       console.error('Gemini generate error:', err);
       const errMsg = 'Không thể tạo ảnh AI lúc này. Vui lòng kiểm tra Gemini API key hoặc thử lại sau.';
       setGeminiError(errMsg);
-      setResultImageUrl('/images/ai-tryon/step4_after_hd.jpg');
+      setResultImageUrl(inlineGender === 'nu' ? '/images/ai-tryon/step4_after_female_hd.webp' : '/images/ai-tryon/step4_after_hd.jpg');
       scrollToSection('step-4-results');
     } finally {
       setIsGeminiGenerating(false);
