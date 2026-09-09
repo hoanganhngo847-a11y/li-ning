@@ -84,8 +84,8 @@ export async function GET(
   } catch (err: any) {
     console.error('Tripo status poll error:', err);
     return NextResponse.json(
-      { success: false, message: err.message || 'Lỗi kiểm tra tiến độ Tripo' },
-      { status: 500 }
+      { success: false, status: 'failed', message: err.message || 'Lỗi kiểm tra tiến độ Tripo', error: err.message },
+      { status: 200 }
     );
   }
 }

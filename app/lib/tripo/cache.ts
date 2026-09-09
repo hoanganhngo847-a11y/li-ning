@@ -49,6 +49,11 @@ const SEED_CACHE_MAP: Record<string, string> = {
   // Default female sample images (step4_after_female_hd.webp & jpg)
   '368fb35d83ac45cee17d3e568228bbe3': '/uploads/models/lining-3d-0b801dbe-e8cf-4480-83fd-e317625881a4.glb',
   '27a1d92535fb1961c95536b6fec968b5': '/uploads/models/lining-3d-0b801dbe-e8cf-4480-83fd-e317625881a4.glb',
+  'default': '/uploads/models/lining-3d-0b801dbe-e8cf-4480-83fd-e317625881a4.glb',
+  'cached_default': '/uploads/models/lining-3d-0b801dbe-e8cf-4480-83fd-e317625881a4.glb',
+  'default_fallback': '/uploads/models/lining-3d-0b801dbe-e8cf-4480-83fd-e317625881a4.glb',
+  'cached_default_fallback': '/uploads/models/lining-3d-0b801dbe-e8cf-4480-83fd-e317625881a4.glb',
+  'fallback': '/uploads/models/lining-3d-0b801dbe-e8cf-4480-83fd-e317625881a4.glb',
 };
 
 /**
@@ -57,13 +62,9 @@ const SEED_CACHE_MAP: Record<string, string> = {
  */
 export function getCachedGlbUrl(key: string): string | null {
   try {
-    // 1. Check pre-seeded model map
+    // 1. Check pre-seeded model map (works 100% on Vercel CDN)
     if (SEED_CACHE_MAP[key]) {
-      const targetRel = SEED_CACHE_MAP[key];
-      const targetAbs = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', targetRel.replace(/^\//, ''));
-      if (fs.existsSync(targetAbs) && fs.statSync(targetAbs).size > 1024) {
-        return targetRel;
-      }
+      return SEED_CACHE_MAP[key];
     }
 
     // 2. Check dynamic cache on disk

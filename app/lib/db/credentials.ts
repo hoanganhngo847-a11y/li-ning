@@ -3,8 +3,7 @@
  * Supports Neon, Supabase, Vercel Postgres, AWS RDS via DATABASE_URL / POSTGRES_URL.
  * Gracefully provides local development fallback when no database connection string is provided.
  */
-import { Pool } from 'pg';
-
+// Lazy-loaded database driver for Serverless safety
 export interface ApiCredential {
   id: string;
   provider: string;
@@ -15,8 +14,7 @@ export interface ApiCredential {
   updated_at: Date;
 }
 
-// Global pool singleton for serverless connection reuse
-let pool: Pool | null = null;
+let pool: any = null;
 let isTableInitialized = false;
 
 function getDbUrl(): string | null {
@@ -28,19 +26,25 @@ function getDbUrl(): string | null {
   );
 }
 
-function getPool(): Pool | null {
+async function getPool(): Promise<any> {
   const dbUrl = getDbUrl();
   if (!dbUrl) return null;
 
   if (!pool) {
-    const isLocalhost = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
-    pool = new Pool({
-      connectionString: dbUrl,
-      ssl: isLocalhost ? false : { rejectUnauthorized: false },
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
-    });
+    try {
+      const { Pool } = await import('pg');
+      const isLocalhost = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
+      pool = new Pool({
+        connectionString: dbUrl,
+        ssl: isLocalhost ? false : { rejectUnauthorized: false },
+        max: 10,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+      });
+    } catch (err: any) {
+      console.warn('[DB Init Error] Could not load pg driver:', err.message);
+      return null;
+    }
   }
   return pool;
 }
@@ -48,7 +52,7 @@ function getPool(): Pool | null {
 /**
  * Initializes table schema if not already present in PostgreSQL
  */
-async function ensureSchema(p: Pool): Promise<void> {
+async function ensureSchema(p: any): Promise<void> {
   if (isTableInitialized) return;
 
   const createTableQuery = `
@@ -90,7 +94,7 @@ function getLocalStore(): Map<string, ApiCredential> {
  */
 export async function getDbCredential(provider: string): Promise<ApiCredential | null> {
   const cleanProvider = provider.trim().toLowerCase();
-  const p = getPool();
+  const p = await getPool();
 
   if (p) {
     try {
@@ -134,7 +138,7 @@ export async function upsertDbCredential(
   const cleanProvider = provider.trim().toLowerCase();
   const id = `cred_${cleanProvider}`;
   const now = new Date();
-  const p = getPool();
+  const p = await getPool();
 
   if (p) {
     try {
@@ -198,7 +202,7 @@ export async function upsertDbCredential(
  * Lists all credentials in the database
  */
 export async function listDbCredentials(): Promise<ApiCredential[]> {
-  const p = getPool();
+  const p = await getPool();
 
   if (p) {
     try {
@@ -228,7 +232,7 @@ export async function listDbCredentials(): Promise<ApiCredential[]> {
  */
 export async function deleteDbCredential(provider: string): Promise<boolean> {
   const cleanProvider = provider.trim().toLowerCase();
-  const p = getPool();
+  const p = await getPool();
 
   if (p) {
     try {

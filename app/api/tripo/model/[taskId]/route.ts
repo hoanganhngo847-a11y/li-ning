@@ -14,6 +14,10 @@ export async function GET(
     const { taskId } = await params;
     const cleanId = taskId.replace(/^cached_/, '');
 
+    if (cleanId.includes('default') || cleanId.includes('fallback')) {
+      return NextResponse.redirect(new URL('/uploads/models/lining-3d-0b801dbe-e8cf-4480-83fd-e317625881a4.glb', req.url));
+    }
+
     // 1. FAST DISK CACHE CHECK: If already saved locally, serve directly!
     const modelsDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'uploads', 'models');
     const directFileCandidates = [
@@ -76,9 +80,8 @@ export async function GET(
     });
   } catch (err: any) {
     console.error('Tripo GLB proxy error:', err);
-    return NextResponse.json(
-      { error: err.message || 'Lỗi tải mô hình 3D từ Tripo' },
-      { status: 500 }
+    return NextResponse.redirect(
+      new URL('/uploads/models/lining-3d-0b801dbe-e8cf-4480-83fd-e317625881a4.glb', req.url)
     );
   }
 }
