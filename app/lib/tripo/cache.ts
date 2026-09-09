@@ -28,7 +28,7 @@ export function computeImageHash(buffer: Buffer): string {
   return crypto.createHash('sha256').update(buffer).digest('hex').substring(0, 32);
 }
 
-const MODELS_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'uploads', 'models');
+const MODELS_DIR = path.join('/tmp', 'uploads', 'models');
 
 function ensureModelsDir(): boolean {
   try {
