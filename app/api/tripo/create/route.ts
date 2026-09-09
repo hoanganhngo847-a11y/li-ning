@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { uploadImageToTripo, submitTripoImageToModel } from '@/app/lib/tripo/client';
+import {
+  computeImageHash,
+  getCachedGlbUrl,
+  getActiveTaskId,
+  registerActiveTask,
+} from '@/app/lib/tripo/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +16,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as any;
     const imageUrl = body.imageUrl || body.fitroomResultUrl || body.image;
     const imageBase64 = body.imageBase64;
+    const mode: 'turbo' | 'hd' = body.mode === 'hd' ? 'hd' : 'turbo';
 
     let buffer: Buffer | null = null;
     let format: 'jpg' | 'png' | 'webp' = 'jpg';
@@ -59,18 +66,58 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Upload to Tripo S3
+    // 1. FAST HASH CACHE CHECK (0.05s Instant Return!)
+    const imageHash = computeImageHash(buffer);
+    const cachedGlbUrl = getCachedGlbUrl(imageHash);
+
+    if (cachedGlbUrl) {
+      return NextResponse.json({
+        success: true,
+        taskId: `cached_${imageHash}`,
+        jobId: `cached_${imageHash}`,
+        status: 'completed',
+        cached: true,
+        glbUrl: cachedGlbUrl,
+        progress: 100,
+        message: 'Mô hình 3D đã sẵn sàng tức thì từ bộ nhớ đệm (0.1s)',
+      });
+    }
+
+    // 2. ACTIVE TASK DEDUPLICATION (Avoid duplicate generation of identical image)
+    const existingTaskId = getActiveTaskId(imageHash);
+    if (existingTaskId) {
+      return NextResponse.json({
+        success: true,
+        taskId: existingTaskId,
+        jobId: existingTaskId,
+        status: 'in_progress',
+        cached: false,
+        message: 'Tác vụ 3D tương ứng đang được xử lý trên Tripo Cloud...',
+      });
+    }
+
+    // 3. Upload to Tripo S3
     const fileToken = await uploadImageToTripo(buffer, format);
 
-    // 2. Submit Tripo generation task
-    const { taskId } = await submitTripoImageToModel(fileToken);
+    // 4. Submit Tripo generation task with Turbo optimization (25,000 faces, standard texture)
+    const { taskId } = await submitTripoImageToModel(fileToken, undefined, {
+      mode,
+      faceLimit: mode === 'hd' ? 60000 : 25000,
+      texture: mode === 'hd' ? 'HD' : 'standard',
+      pbr: true,
+    });
+
+    // Register active task mapping
+    registerActiveTask(imageHash, taskId);
 
     return NextResponse.json({
       success: true,
       taskId,
       jobId: taskId,
       status: 'queued',
-      message: 'Đã gửi ảnh thành công tới Tripo 3D. Đang khởi tạo mô hình 3D...',
+      cached: false,
+      mode,
+      message: `Đã gửi ảnh thành công tới Tripo 3D (${mode === 'turbo' ? 'Chế độ Siêu Tốc' : 'Chế độ HD'}). Đang khởi tạo mô hình 3D...`,
     });
   } catch (err: any) {
     console.error('Tripo create task error:', err);

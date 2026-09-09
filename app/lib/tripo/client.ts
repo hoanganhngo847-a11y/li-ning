@@ -92,31 +92,80 @@ export async function uploadImageToTripo(
   return file_token;
 }
 
+export interface TripoModelOptions {
+  faceLimit?: number;
+  texture?: 'no' | 'standard' | 'HD';
+  pbr?: boolean;
+  mode?: 'turbo' | 'hd';
+}
+
 /**
  * Submits an image file_token to Tripo 3D for mesh reconstruction.
+ * Optimized with face_limit & turbo parameters to dramatically accelerate generation.
  */
 export async function submitTripoImageToModel(
   fileToken: string,
-  modelName?: string
+  modelName?: string,
+  options?: TripoModelOptions
 ): Promise<TripoSubmitResult> {
   const apiKey = await resolveTripoApiKey();
   const model = modelName || process.env.TRIPO_MODEL || 'v3.1-20260211';
 
-  const taskRes = await fetch(`${TRIPO_BASE_URL}/generation/image-to-model`, {
+  // Build payload
+  const payload: any = {
+    model,
+    file: {
+      file_token: fileToken,
+    },
+  };
+
+  // Turbo optimization: 25,000 polygon limit cuts generation time & GLB size dramatically
+  if (options?.faceLimit) {
+    payload.face_limit = options.faceLimit;
+  } else if (options?.mode === 'turbo') {
+    payload.face_limit = 25000;
+  }
+
+  if (options?.texture) {
+    payload.texture = options.texture;
+  } else if (options?.mode === 'turbo') {
+    payload.texture = 'standard';
+  }
+
+  if (typeof options?.pbr === 'boolean') {
+    payload.pbr = options.pbr;
+  }
+
+  let taskRes = await fetch(`${TRIPO_BASE_URL}/generation/image-to-model`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model,
-      file: {
-        file_token: fileToken,
-      },
-    }),
+    body: JSON.stringify(payload),
   });
 
-  const taskData = (await taskRes.json()) as any;
+  let taskData = (await taskRes.json()) as any;
+
+  // Resilient fallback: if custom parameters are rejected by specific Tripo model, retry with minimal baseline
+  if ((!taskRes.ok || taskData.code !== 0) && (payload.face_limit || payload.texture)) {
+    console.warn('[Tripo] Fast parameters rejected, falling back to standard payload:', taskData?.message);
+    taskRes = await fetch(`${TRIPO_BASE_URL}/generation/image-to-model`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        file: {
+          file_token: fileToken,
+        },
+      }),
+    });
+    taskData = (await taskRes.json()) as any;
+  }
+
   if (!taskRes.ok || taskData.code !== 0) {
     if (taskData.code === 2010 || String(taskData.message).includes('credit')) {
       throw new Error(

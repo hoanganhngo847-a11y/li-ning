@@ -44,4 +44,4 @@ next-env.d.ts
 next.log
 tsconfig.tsbuildinfo
 scratch/
-
+public/uploads/models/tripo_*.glb

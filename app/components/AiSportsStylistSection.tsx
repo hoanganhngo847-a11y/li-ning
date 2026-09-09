@@ -672,17 +672,28 @@ export default function AiSportsStylistSection() {
   const [tripo3DProgress, setTripo3DProgress] = useState<number>(0);
   const [tripo3DProgressText, setTripo3DProgressText] = useState<string>('');
   const [tripo3DError, setTripo3DError] = useState<string | null>(null);
+  const [tripoMode, setTripoMode] = useState<'turbo' | 'hd'>('turbo');
   const tripoPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const tripoProgressTickerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     return () => {
       if (tripoPollIntervalRef.current) clearInterval(tripoPollIntervalRef.current);
+      if (tripoProgressTickerRef.current) clearInterval(tripoProgressTickerRef.current);
     };
   }, []);
 
-  const handleGenerateTripo3D = async () => {
+  // Reset 3D state when user switches gender or new try-on result is created
+  useEffect(() => {
+    setTripo3DStatus('idle');
+    setTripo3DGlbUrl(null);
+  }, [inlineGender, tryOnResultUrl]);
+
+  const handleGenerateTripo3D = async (overrideMode?: 'turbo' | 'hd' | React.MouseEvent | unknown) => {
     if (tripo3DStatus === 'generating') return;
 
+    const chosenMode: 'turbo' | 'hd' =
+      overrideMode === 'turbo' || overrideMode === 'hd' ? overrideMode : tripoMode;
     const sourceImage =
       tryOnResultUrl ||
       resultImageUrl ||
@@ -690,16 +701,19 @@ export default function AiSportsStylistSection() {
         ? '/images/ai-tryon/step4_after_female_hd.webp'
         : '/images/ai-tryon/step4_after_hd.jpg');
 
+    if (tripoPollIntervalRef.current) clearInterval(tripoPollIntervalRef.current);
+    if (tripoProgressTickerRef.current) clearInterval(tripoProgressTickerRef.current);
+
     try {
       setTripo3DStatus('generating');
       setTripo3DProgress(15);
-      setTripo3DProgressText('Đang nạp ảnh kết quả thử đồ lên Tripo 3D Cloud...');
+      setTripo3DProgressText('⚡ Đang kiểm tra bộ nhớ đệm 3D & chuẩn bị phom dáng...');
       setTripo3DError(null);
 
       const res = await fetch('/api/tripo/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: sourceImage }),
+        body: JSON.stringify({ imageUrl: sourceImage, mode: chosenMode }),
       });
 
       const data = (await res.json()) as any;
@@ -707,16 +721,47 @@ export default function AiSportsStylistSection() {
         throw new Error(data.message || 'Không thể khởi tạo tác vụ 3D trên Tripo');
       }
 
-      const taskId = data.taskId;
-      setTripo3DProgress(30);
-      setTripo3DProgressText('Tác vụ đang trong hàng đợi xử lý Tripo 3D V3...');
+      // 1. INSTANT CACHE HIT (0.1s response - no wait!)
+      if (data.status === 'completed' && data.glbUrl) {
+        setTripo3DStatus('ready');
+        setTripo3DProgress(100);
+        setTripo3DProgressText('Mô hình 3D Tripo đã sẵn sàng tức thì!');
+        setTripo3DGlbUrl(data.glbUrl);
+        return;
+      }
 
-      if (tripoPollIntervalRef.current) clearInterval(tripoPollIntervalRef.current);
+      const taskId = data.taskId;
+      setTripo3DProgress(28);
+      setTripo3DProgressText('🚀 Tác vụ đã nạp lên Tripo Cloud. Đang phân tích phom dáng...');
+
+      // Dynamic Smooth Progress Ticker (never stuck at 30%!)
+      tripoProgressTickerRef.current = setInterval(() => {
+        setTripo3DProgress((prev) => {
+          if (prev < 35) return prev + 2;
+          if (prev < 55) {
+            setTripo3DProgressText('🧊 AI Tripo đang tái lập lưới đa giác 3D (25,000 polys)...');
+            return prev + 1.5;
+          }
+          if (prev < 75) {
+            setTripo3DProgressText('🎨 Phủ chất liệu vải thể thao Li-Ning & PBR Shader...');
+            return prev + 1;
+          }
+          if (prev < 92) {
+            setTripo3DProgressText('✨ Tối ưu hóa góc nhìn 360° & nén mô hình nhẹ cho web...');
+            return prev + 0.5;
+          }
+          setTripo3DProgressText('📦 Đang hoàn tất đóng gói file mô hình 3D (.glb)...');
+          return prev;
+        });
+      }, 750);
+
       const startTime = Date.now();
 
+      // Smart Polling (Fast 2s interval)
       tripoPollIntervalRef.current = setInterval(async () => {
         if (Date.now() - startTime > 10 * 60 * 1000) {
           if (tripoPollIntervalRef.current) clearInterval(tripoPollIntervalRef.current);
+          if (tripoProgressTickerRef.current) clearInterval(tripoProgressTickerRef.current);
           setTripo3DStatus('failed');
           setTripo3DError('Thời gian xử lý vượt quá 10 phút.');
           return;
@@ -727,30 +772,40 @@ export default function AiSportsStylistSection() {
           const statusData = (await statusRes.json()) as any;
 
           if (statusData.status === 'in_progress') {
-            const pct = typeof statusData.progress === 'number' ? statusData.progress : 55;
-            setTripo3DProgress((prev) => Math.max(prev, Math.min(92, pct)));
-            setTripo3DProgressText('Tripo 3D đang tái cấu trúc lưới đa giác PBR & Texture...');
+            if (typeof statusData.progress === 'number' && statusData.progress > 0) {
+              setTripo3DProgress((prev) => Math.max(prev, Math.min(94, statusData.progress)));
+            }
           } else if (statusData.status === 'completed') {
             if (tripoPollIntervalRef.current) clearInterval(tripoPollIntervalRef.current);
+            if (tripoProgressTickerRef.current) clearInterval(tripoProgressTickerRef.current);
             setTripo3DStatus('ready');
             setTripo3DProgress(100);
             setTripo3DProgressText('Mô hình 3D Tripo đã sẵn sàng!');
             setTripo3DGlbUrl(statusData.glbUrl || `/api/tripo/model/${taskId}`);
           } else if (statusData.status === 'failed') {
             if (tripoPollIntervalRef.current) clearInterval(tripoPollIntervalRef.current);
+            if (tripoProgressTickerRef.current) clearInterval(tripoProgressTickerRef.current);
             setTripo3DStatus('failed');
             setTripo3DError(statusData.error || 'Tạo mô hình 3D Tripo thất bại.');
           }
         } catch (e: any) {
           console.error('Tripo poll error:', e);
         }
-      }, 3500);
+      }, 2000);
     } catch (err: any) {
+      if (tripoProgressTickerRef.current) clearInterval(tripoProgressTickerRef.current);
       console.error('Tripo generate error:', err);
       setTripo3DStatus('failed');
       setTripo3DError(err.message || 'Không thể kết nối dịch vụ Tripo 3D.');
     }
   };
+
+  // Auto pre-trigger Tripo 3D in background when Step 4 is reached
+  useEffect(() => {
+    if (activeStep === 4 && tripo3DStatus === 'idle' && !tripo3DGlbUrl) {
+      handleGenerateTripo3D('turbo');
+    }
+  }, [activeStep, tripo3DStatus, tripo3DGlbUrl]);
 
   // Animated AI Score counter
   const [animatedScore, setAnimatedScore] = useState<number>(0);
@@ -2563,32 +2618,71 @@ export default function AiSportsStylistSection() {
                     {tripo3DStatus === 'ready'
                       ? '3D SẴN SÀNG'
                       : tripo3DStatus === 'generating'
-                      ? 'ĐANG DỰNG 3D'
-                      : 'Tripo 3D V3'}
+                      ? 'ĐANG TẠO 3D...'
+                      : '⚡ SIÊU TỐC'}
                   </span>
                 </div>
 
-                {tripo3DStatus === 'ready' && (
+                <div className="flex items-center gap-1.5">
+                  {tripo3DStatus === 'ready' && (
+                    <button
+                      onClick={() => handleGenerateTripo3D(tripoMode)}
+                      className="text-[11px] font-bold text-zinc-400 hover:text-[#e60012] flex items-center gap-1 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-zinc-100"
+                      title="Tạo lại mô hình 3D"
+                    >
+                      <ArrowsClockwise className="w-3.5 h-3.5" />
+                      <span>Làm mới</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Mode Selector Pill */}
+              <div className="pt-3 pb-1 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-zinc-500">Chế độ tạo:</span>
+                <div className="flex items-center gap-1 p-0.5 bg-zinc-100 border border-zinc-200 rounded-xl">
                   <button
-                    onClick={handleGenerateTripo3D}
-                    className="text-[11px] font-bold text-zinc-400 hover:text-[#e60012] flex items-center gap-1 transition-colors cursor-pointer"
-                    title="Tạo lại mô hình 3D"
+                    type="button"
+                    onClick={() => {
+                      setTripoMode('turbo');
+                      if (tripo3DStatus === 'ready') handleGenerateTripo3D('turbo');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                      tripoMode === 'turbo'
+                        ? 'bg-gradient-to-r from-[#e60012] to-orange-500 text-white shadow-xs'
+                        : 'text-zinc-600 hover:text-zinc-950'
+                    }`}
+                    title="Tối ưu hóa lưới đa giác nhẹ (25,000 faces) để tạo nhanh và xoay mượt mà 60fps"
                   >
-                    <ArrowsClockwise className="w-3.5 h-3.5" />
-                    <span>Làm mới</span>
+                    ⚡ Siêu Tốc (~15s)
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTripoMode('hd');
+                      if (tripo3DStatus === 'ready') handleGenerateTripo3D('hd');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                      tripoMode === 'hd'
+                        ? 'bg-gradient-to-r from-zinc-900 to-zinc-800 text-white shadow-xs'
+                        : 'text-zinc-600 hover:text-zinc-950'
+                    }`}
+                    title="Chế độ chi tiết cao PBR Studio"
+                  >
+                    💎 Studio HD
+                  </button>
+                </div>
               </div>
 
               {/* 3D Visual Box */}
-              <div className="relative my-4 aspect-[3/4] w-full rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center shadow-inner">
+              <div className="relative my-3 aspect-[3/4] w-full rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center shadow-inner">
                 {tripo3DGlbUrl && tripo3DStatus === 'ready' ? (
                   <Tripo3DViewer modelUrl={tripo3DGlbUrl} posterImageUrl={tryOnResultUrl || resultImageUrl || undefined} className="w-full h-full" />
                 ) : tripo3DStatus === 'generating' ? (
-                  /* GENERATING STATE: High-tech 3D scanning radar */
+                  /* GENERATING STATE: High-tech 3D scanning radar with dynamic progress */
                   <div className="relative w-full h-full flex flex-col items-center justify-center p-6 text-center text-white select-none">
                     {/* Pulsing 3D Scanning Rings */}
-                    <div className="relative w-28 h-28 flex items-center justify-center mb-6">
+                    <div className="relative w-28 h-28 flex items-center justify-center mb-5">
                       <div className="absolute inset-0 rounded-full border border-red-500/30 animate-ping" />
                       <div
                         className="absolute inset-2 rounded-full border-2 border-dashed border-[#e60012]/70 animate-spin"
@@ -2601,24 +2695,31 @@ export default function AiSportsStylistSection() {
                       <Cube weight="duotone" className="w-10 h-10 text-[#ff2a3b] animate-pulse" />
                     </div>
 
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#ff2a3b] mb-1">
-                      TRIPO 3D AI SCANNER
-                    </span>
-                    <h4 className="text-sm font-bold text-white mb-3">
-                      Đang Tạo Mô Hình 3D ({tripo3DProgress}%)
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-[#ff2a3b] text-[9px] font-black tracking-widest border border-red-500/30">
+                        {tripoMode === 'turbo' ? '⚡ CHẾ ĐỘ SIÊU TỐC' : '💎 CHẾ ĐỘ STUDIO HD'}
+                      </span>
+                    </div>
+
+                    <h4 className="text-sm font-bold text-white mb-2.5">
+                      Đang Tạo Mô Hình 3D ({Math.round(tripo3DProgress)}%)
                     </h4>
 
                     {/* Progress Bar */}
                     <div className="w-48 h-2 bg-zinc-800 rounded-full overflow-hidden mb-3 border border-zinc-700">
                       <div
                         className="h-full bg-gradient-to-r from-[#e60012] via-orange-500 to-[#ff2a3b] transition-all duration-300 rounded-full"
-                        style={{ width: `${tripo3DProgress}%` }}
+                        style={{ width: `${Math.min(100, Math.max(8, tripo3DProgress))}%` }}
                       />
                     </div>
 
-                    <p className="text-[11px] text-zinc-400 max-w-xs leading-relaxed animate-pulse">
+                    <p className="text-[11px] text-zinc-400 max-w-xs leading-relaxed min-h-[32px] flex items-center justify-center">
                       {tripo3DProgressText || 'Đang dựng khung lưới không gian 3D PBR Mesh...'}
                     </p>
+
+                    <span className="text-[9px] text-zinc-500 mt-3 pt-2 border-t border-zinc-800/80">
+                      ⚡ Tự động nén đa giác nhẹ (25K polys) để nạp tức thì & xoay mượt mà
+                    </span>
                   </div>
                 ) : (
                   /* IDLE STATE: Inviting 3D Holographic Stage */
@@ -2630,7 +2731,7 @@ export default function AiSportsStylistSection() {
                     <div className="relative my-auto flex flex-col items-center">
                       <div
                         className="relative w-24 h-24 flex items-center justify-center mb-4 group cursor-pointer"
-                        onClick={handleGenerateTripo3D}
+                        onClick={() => handleGenerateTripo3D('turbo')}
                       >
                         {/* Rotating Outer Radar Rings */}
                         <div
@@ -2656,20 +2757,20 @@ export default function AiSportsStylistSection() {
                       {/* Prominent Direct CTA inside the box */}
                       <button
                         type="button"
-                        onClick={handleGenerateTripo3D}
+                        onClick={() => handleGenerateTripo3D(tripoMode)}
                         className="px-5 py-2.5 bg-gradient-to-r from-[#e60012] to-[#ff2a3b] hover:from-[#c9000f] hover:to-[#e60012] text-white font-bold text-xs rounded-full shadow-lg shadow-red-500/30 active:scale-95 transition-all flex items-center gap-2 uppercase tracking-wider cursor-pointer"
                       >
                         <Sparkle weight="fill" className="w-4 h-4 text-amber-300" />
-                        TẠO MÔ HÌNH 3D TRIPO
+                        TẠO MÔ HÌNH 3D ({tripoMode === 'turbo' ? 'SIÊU TỐC' : 'STUDIO HD'})
                         <CaretRight weight="bold" className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
                     {/* Feature tags */}
                     <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-500 pt-2 border-t border-zinc-900 w-full">
-                      <span>✦ Xoay 360°</span>
+                      <span>⚡ Tải tức thì</span>
                       <span>•</span>
-                      <span>✦ Zoom chi tiết</span>
+                      <span>✦ Xoay 360°</span>
                       <span>•</span>
                       <span>✦ Lưới PBR Tripo</span>
                     </div>
@@ -2680,8 +2781,8 @@ export default function AiSportsStylistSection() {
               <div className="text-center">
                 <span className="text-[11px] text-zinc-500 font-medium">
                   {tripo3DStatus === 'ready'
-                    ? '✓ Đã sẵn sàng xoay 360° trong không gian 3 chiều'
-                    : 'Tự động tái tạo mesh 3D từ ảnh trang phục đã thử'}
+                    ? '✓ Đã sẵn sàng xoay 360° • Kéo chuột hoặc chạm để xoay góc nhìn'
+                    : '⚡ Tự động nạp bộ nhớ đệm hoặc tạo ngầm khi cuộn vào bước này'}
                 </span>
               </div>
             </div>

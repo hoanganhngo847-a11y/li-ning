@@ -64,12 +64,14 @@ export default function FitRoomModal() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const threeDPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const threeDProgressTickerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clear polling on unmount
   useEffect(() => {
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       if (threeDPollIntervalRef.current) clearInterval(threeDPollIntervalRef.current);
+      if (threeDProgressTickerRef.current) clearInterval(threeDProgressTickerRef.current);
     };
   }, []);
 
@@ -294,16 +296,19 @@ export default function FitRoomModal() {
   const handleCreateTripo3D = async () => {
     if (!resultImageUrl || threeDStatus === 'generating' || threeDStatus === 'submitting') return;
 
+    if (threeDPollIntervalRef.current) clearInterval(threeDPollIntervalRef.current);
+    if (threeDProgressTickerRef.current) clearInterval(threeDProgressTickerRef.current);
+
     try {
       setThreeDStatus('preparing_image');
       setThreeDProgress(15);
-      setThreeDStatusText('Đang nạp ảnh lên Tripo 3D Cloud...');
+      setThreeDStatusText('⚡ Đang nạp ảnh và kiểm tra bộ nhớ đệm Tripo 3D...');
       setThreeDError(null);
 
       const res = await fetch('/api/tripo/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: resultImageUrl }),
+        body: JSON.stringify({ imageUrl: resultImageUrl, mode: 'turbo' }),
       });
 
       const data = (await res.json()) as any;
@@ -311,17 +316,48 @@ export default function FitRoomModal() {
         throw new Error(data.message || 'Không thể tạo tác vụ 3D Tripo.');
       }
 
+      // 1. Instant Cache Hit (0.1s)
+      if (data.status === 'completed' && data.glbUrl) {
+        setThreeDStatus('completed');
+        setThreeDProgress(100);
+        setThreeDStatusText('Mô hình 3D Tripo đã sẵn sàng tức thì!');
+        setThreeDGlbUrl(data.glbUrl);
+        setViewMode('3d');
+        return;
+      }
+
       const taskId = data.taskId;
       setThreeDStatus('generating');
-      setThreeDProgress(30);
-      setThreeDStatusText('Tác vụ đang trong hàng đợi xử lý Tripo 3D V3...');
+      setThreeDProgress(28);
+      setThreeDStatusText('🚀 Khởi tạo không gian 3D Tripo Turbo Mesh...');
 
-      if (threeDPollIntervalRef.current) clearInterval(threeDPollIntervalRef.current);
+      // Dynamic Progress Ticker
+      threeDProgressTickerRef.current = setInterval(() => {
+        setThreeDProgress((prev) => {
+          if (prev < 35) return prev + 2;
+          if (prev < 55) {
+            setThreeDStatusText('🧊 AI Tripo đang dựng khung lưới 3D (25,000 polys)...');
+            return prev + 1.5;
+          }
+          if (prev < 75) {
+            setThreeDStatusText('🎨 Tái tạo chất liệu vải thể thao & PBR Shader...');
+            return prev + 1;
+          }
+          if (prev < 92) {
+            setThreeDStatusText('✨ Tối ưu góc xoay 360° & nén mô hình nhẹ...');
+            return prev + 0.5;
+          }
+          setThreeDStatusText('📦 Hoàn tất đóng gói file mô hình 3D (.glb)...');
+          return prev;
+        });
+      }, 750);
+
       const startTime = Date.now();
 
       threeDPollIntervalRef.current = setInterval(async () => {
         if (Date.now() - startTime > 10 * 60 * 1000) {
           if (threeDPollIntervalRef.current) clearInterval(threeDPollIntervalRef.current);
+          if (threeDProgressTickerRef.current) clearInterval(threeDProgressTickerRef.current);
           setThreeDStatus('failed');
           setThreeDError('Thời gian xử lý vượt quá 10 phút.');
           return;
@@ -332,11 +368,12 @@ export default function FitRoomModal() {
           const statusData = (await statusRes.json()) as any;
 
           if (statusData.status === 'in_progress') {
-            const pct = typeof statusData.progress === 'number' ? statusData.progress : 50;
-            setThreeDProgress((prev) => Math.max(prev, Math.min(92, pct)));
-            setThreeDStatusText('Tripo 3D đang dựng khung lưới & chất liệu (PBR)...');
+            if (typeof statusData.progress === 'number' && statusData.progress > 0) {
+              setThreeDProgress((prev) => Math.max(prev, Math.min(94, statusData.progress)));
+            }
           } else if (statusData.status === 'completed') {
             if (threeDPollIntervalRef.current) clearInterval(threeDPollIntervalRef.current);
+            if (threeDProgressTickerRef.current) clearInterval(threeDProgressTickerRef.current);
             setThreeDStatus('completed');
             setThreeDProgress(100);
             setThreeDStatusText('Mô hình 3D Tripo đã hoàn tất!');
@@ -344,14 +381,16 @@ export default function FitRoomModal() {
             setViewMode('3d');
           } else if (statusData.status === 'failed') {
             if (threeDPollIntervalRef.current) clearInterval(threeDPollIntervalRef.current);
+            if (threeDProgressTickerRef.current) clearInterval(threeDProgressTickerRef.current);
             setThreeDStatus('failed');
             setThreeDError(statusData.error || 'Tạo mô hình 3D Tripo thất bại.');
           }
         } catch (e: any) {
           console.error('Tripo 3D poll error:', e);
         }
-      }, 3500);
+      }, 2000);
     } catch (err: any) {
+      if (threeDProgressTickerRef.current) clearInterval(threeDProgressTickerRef.current);
       setThreeDStatus('failed');
       setThreeDError(err.message || 'Tạo mô hình 3D Tripo thất bại.');
     }
