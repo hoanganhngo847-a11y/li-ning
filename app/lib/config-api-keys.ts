@@ -294,12 +294,12 @@ export function saveApiKeys(newConfig: {
 export async function testFitRoomConnection(apiKey: string): Promise<{ success: boolean; latencyMs: number; message: string }> {
   const start = Date.now();
   try {
-    const res = await fetch('https://api.fitroom.app/v1/models', {
-      method: 'GET',
+    const res = await fetch('https://platform.fitroom.app/api/tryon/v2/tasks', {
+      method: 'POST',
       headers: {
-        'X-API-Key': apiKey.trim(),
-        'Accept': 'application/json',
+        'X-API-KEY': apiKey.trim(),
       },
+      body: new FormData(),
     });
 
     const latencyMs = Date.now() - start;
@@ -308,8 +308,16 @@ export async function testFitRoomConnection(apiKey: string): Promise<{ success: 
       return { success: false, latencyMs, message: 'Khóa API FitRoom không hợp lệ hoặc đã hết hạn.' };
     }
 
-    if (res.ok || res.status === 200 || res.status === 404) {
-      return { success: true, latencyMs, message: `Kết nối thành công (${latencyMs}ms)` };
+    if (res.status === 402) {
+      return {
+        success: false,
+        latencyMs,
+        message: 'Khóa API FitRoom hợp lệ nhưng tài khoản ĐÃ HẾT CREDITS (HTTP 402: Insufficient credits). Vui lòng nạp thêm credits tại platform.fitroom.app.',
+      };
+    }
+
+    if (res.ok || res.status === 200 || res.status === 400) {
+      return { success: true, latencyMs, message: `Kết nối thành công tới FitRoom AI (${latencyMs}ms)` };
     }
 
     return { success: true, latencyMs, message: `Kết nối được chấp nhận (${latencyMs}ms, HTTP ${res.status})` };

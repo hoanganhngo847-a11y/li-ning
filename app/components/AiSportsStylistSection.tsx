@@ -964,6 +964,7 @@ export default function AiSportsStylistSection() {
   const [isGeminiGenerating, setIsGeminiGenerating] = useState(false);
   const [geminiError, setGeminiError] = useState<string | null>(null);
   const [geminiSuccessToast, setGeminiSuccessToast] = useState<string | null>(null);
+  const [fitRoomNotice, setFitRoomNotice] = useState<string | null>(null);
 
   const handleGenerateWithGemini = async () => {
     setIsGeminiGenerating(true);
@@ -1047,9 +1048,12 @@ export default function AiSportsStylistSection() {
   const handleRunTryOn = async () => {
     setIsFittingLoading(true);
     setFittingProgressText('AI FitRoom đang chuẩn bị người mẫu & trang phục...');
+    setFitRoomNotice(null);
 
-    const currentBefore =
-      (inlineGender === 'nu'
+    const isCustomUpload = modelType === 'custom' || (!!modelFile && !!modelPreviewUrl);
+    const currentBefore = isCustomUpload && modelPreviewUrl
+      ? modelPreviewUrl
+      : (inlineGender === 'nu'
         ? selectedBodyShape?.thumbSrc || '/images/ai-tryon/step4_before_female_hd.jpg'
         : selectedBodyShape?.thumbSrc || '/images/ai-tryon/step4_before_hd.jpg');
     setTryOnBeforeUrl(currentBefore);
@@ -1068,7 +1072,7 @@ export default function AiSportsStylistSection() {
     try {
       // 1. Prepare active model blob
       let activeModelBlob: Blob | null = modelFile;
-      if (!activeModelBlob && currentBefore) {
+      if (!activeModelBlob && currentBefore && !currentBefore.startsWith('blob:')) {
         try {
           const fetchRes = await fetch(currentBefore);
           if (fetchRes.ok) {
@@ -1093,7 +1097,7 @@ export default function AiSportsStylistSection() {
               ? modelFile.name
               : 'customer_model.jpg';
           formData.append('model_image', activeModelBlob, fileName);
-          if (currentBefore) {
+          if (!isCustomUpload && currentBefore && !currentBefore.startsWith('blob:')) {
             formData.append('model_image_url', currentBefore);
           }
           formData.append('hd_mode', 'false');
@@ -1159,13 +1163,16 @@ export default function AiSportsStylistSection() {
               data.error &&
               (data.error.includes('hết số lượt thử') ||
                 data.error.includes('credits') ||
-                data.error.includes('credit')))
+                data.error.includes('credit') ||
+                data.error.includes('Insufficient credits')))
           ) {
             console.warn('FitRoom account ran out of credits:', data?.error);
-            setGeminiSuccessToast(
-              'Tài khoản FitRoom API hiện đã hết lượt thử miễn phí (Insufficient credits). Hệ thống tự động chuyển sang ảnh mẫu thực tế phù hợp với vóc dáng của bạn.'
-            );
-            setTimeout(() => setGeminiSuccessToast(null), 8000);
+            const noticeMsg = isCustomUpload
+              ? 'Tài khoản FitRoom API hiện đang hết lượt thử (HTTP 402: Insufficient credits). Ảnh cá nhân của bạn đã được giữ nguyên ở nửa TRƯỚC. Bạn có thể cập nhật API Key mới tại Cài đặt Quản trị (/admin/settings) hoặc nạp thêm credits tại platform.fitroom.app.'
+              : 'Tài khoản FitRoom API hiện đã hết lượt thử miễn phí (Insufficient credits). Hệ thống tự động chuyển sang ảnh mẫu thực tế phù hợp với vóc dáng của bạn.';
+            setFitRoomNotice(noticeMsg);
+            setGeminiSuccessToast(noticeMsg);
+            setTimeout(() => setGeminiSuccessToast(null), 10000);
           }
         } catch (apiErr) {
           console.warn('FitRoom API call skipped/failed, falling back to instant render:', apiErr);
@@ -1180,7 +1187,11 @@ export default function AiSportsStylistSection() {
         const fallbackResult = getDynamicFallbackResult();
         setResultImageUrl(fallbackResult);
         setTryOnResultUrl(fallbackResult);
-        if (!geminiSuccessToast) {
+        if (isCustomUpload && !fitRoomNotice) {
+          setFitRoomNotice(
+            'Chưa thể tạo ảnh ghép mới từ FitRoom (máy chủ tạm hết credits hoặc ảnh góc chụp chưa tối ưu). Ảnh cá nhân của bạn được lưu ở nửa TRƯỚC, nửa SAU hiển thị phom dáng mẫu Li-Ning để tham khảo.'
+          );
+        } else if (!geminiSuccessToast) {
           setGeminiSuccessToast(
             'Đã tải hình ảnh thử đồ mô phỏng đúng trang phục đã chọn! Kéo thanh trượt để so sánh vóc dáng trước và sau khi mặc.'
           );
@@ -2689,27 +2700,61 @@ export default function AiSportsStylistSection() {
             </div>
           )}
 
+          {/* FitRoom Notice Alert */}
+          {fitRoomNotice && (
+            <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm shadow-sm animate-fade-in">
+              <div className="flex items-start gap-2.5">
+                <span className="text-lg shrink-0 mt-0.5 sm:mt-0">💡</span>
+                <div>
+                  <span className="font-bold text-amber-950">Thông báo FitRoom Virtual Try-On: </span>
+                  <span>{fitRoomNotice}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href="/admin/settings"
+                  target="_blank"
+                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs cursor-pointer inline-flex items-center"
+                >
+                  Cài đặt API Key
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setFitRoomNotice(null)}
+                  className="px-3 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold rounded-lg text-xs cursor-pointer"
+                >
+                  Đã hiểu
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
             {/* Panel 1: Interactive Before / After Split Slider */}
             <div className="bg-white rounded-3xl border border-zinc-200 p-5 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-zinc-700 uppercase tracking-wider">TRƯỚC</span>
+                  <span className="text-xs font-black text-zinc-700 uppercase tracking-wider">
+                    {modelType === 'custom' || (!!modelFile && !!modelPreviewUrl) ? 'ẢNH CỦA BẠN' : 'TRƯỚC'}
+                  </span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-bold">Ban đầu</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-[#e60012] font-bold">Fit đồ AI</span>
-                  <span className="text-xs font-black text-[#e60012] uppercase tracking-wider">SAU</span>
+                  <span className="text-xs font-black text-[#e60012] uppercase tracking-wider">
+                    {fitRoomNotice && (modelType === 'custom' || !!modelFile) ? 'MẪU THAM KHẢO' : 'SAU'}
+                  </span>
                 </div>
               </div>
 
               {/* Seamless Interactive Split Slider Box */}
               <div className="relative my-4 aspect-[3/4] w-full rounded-2xl overflow-hidden bg-zinc-100 border border-zinc-200 select-none group shadow-inner">
-                {/* 1. Base Layer: Before Athlete */}
+                {/* 1. Base Layer: Before Athlete or User Photo */}
                 <div className="absolute inset-0 w-full h-full">
                   <Image
                     src={
                       tryOnBeforeUrl ||
+                      ((modelType === 'custom' || !!modelFile) && modelPreviewUrl ? modelPreviewUrl : undefined) ||
                       (inlineGender === 'nu'
                         ? selectedBodyShape?.thumbSrc || '/images/ai-tryon/step4_before_female_hd.jpg'
                         : selectedBodyShape?.thumbSrc || '/images/ai-tryon/step4_before_hd.jpg')
@@ -2721,7 +2766,7 @@ export default function AiSportsStylistSection() {
                     priority
                   />
                   <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold tracking-wider uppercase">
-                    TRƯỚC
+                    {modelType === 'custom' || (!!modelFile && !!modelPreviewUrl) ? 'ẢNH CỦA BẠN' : 'TRƯỚC'}
                   </div>
                 </div>
 
@@ -2745,7 +2790,11 @@ export default function AiSportsStylistSection() {
                     priority
                   />
                   <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-[#e60012]/90 backdrop-blur-md text-white text-[10px] font-bold tracking-wider uppercase shadow-md flex items-center gap-1.5">
-                    <span>SAU THỬ ĐỒ</span>
+                    <span>
+                      {fitRoomNotice && (modelType === 'custom' || !!modelFile)
+                        ? 'MẪU THAM KHẢO'
+                        : 'SAU THỬ ĐỒ'}
+                    </span>
                     {(tryOnResultUrl || resultImageUrl) && (
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     )}
