@@ -1048,31 +1048,16 @@ export default function AiSportsStylistSection() {
     setIsFittingLoading(true);
     setFittingProgressText('AI FitRoom đang chuẩn bị người mẫu & trang phục...');
 
-    const currentBefore = modelPreviewUrl || customAvatarUrl || '/images/ai-tryon/step4_before_hd.jpg';
+    const currentBefore =
+      (inlineGender === 'nu'
+        ? selectedBodyShape?.thumbSrc || '/images/ai-tryon/step4_before_female_hd.jpg'
+        : selectedBodyShape?.thumbSrc || '/images/ai-tryon/step4_before_hd.jpg');
     setTryOnBeforeUrl(currentBefore);
 
-    // Dynamic garment-matching helper to ensure try-on result matches chosen product/sport
+    // Dynamic garment-matching helper: ensures try-on result always features the exact same 360 Runway athlete
     const getDynamicFallbackResult = () => {
-      const title = (selectedUpperItem?.title || '').toLowerCase();
-      const code = (selectedUpperItem?.code || '').toUpperCase();
-      if (
-        title.includes('cầu lông') ||
-        title.includes('badminton') ||
-        title.includes('bộ') ||
-        code.includes('AATV045') ||
-        code.includes('AATV')
-      ) {
-        return '/uploads/tryon/badminton_set_result.webp';
-      }
       if (inlineGender === 'nu') {
-        return '/uploads/tryon/test_female_result.webp';
-      }
-      if (
-        title.includes('polo') ||
-        code.includes('APLR125') ||
-        code.includes('APLR')
-      ) {
-        return '/uploads/tryon/latest_tryon_result.webp';
+        return '/images/ai-tryon/step4_after_female_hd.webp';
       }
       return '/images/ai-tryon/step4_after_hd.jpg';
     };
@@ -2725,11 +2710,9 @@ export default function AiSportsStylistSection() {
                   <Image
                     src={
                       tryOnBeforeUrl ||
-                      modelPreviewUrl ||
-                      customAvatarUrl ||
                       (inlineGender === 'nu'
-                        ? '/images/female-athlete-3d-preview.jpg'
-                        : '/images/ai-tryon/step4_before_hd.jpg')
+                        ? selectedBodyShape?.thumbSrc || '/images/ai-tryon/step4_before_female_hd.jpg'
+                        : selectedBodyShape?.thumbSrc || '/images/ai-tryon/step4_before_hd.jpg')
                     }
                     alt="Trước khi thử đồ Li-Ning"
                     fill

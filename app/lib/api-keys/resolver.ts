@@ -5,6 +5,8 @@
 import { getDbCredential } from '../db/credentials';
 import { decryptSecret, maskSecret } from '../crypto/secret-encryption';
 
+import vaultEnc from '../crypto/vault.enc.json';
+
 export type ApiProvider = 'gemini' | 'fitroom' | 'tripo' | 'cloudflare' | 'alibaba';
 
 export const ENV_FALLBACK_MAP: Record<ApiProvider, string> = {
@@ -18,13 +20,13 @@ export const ENV_FALLBACK_MAP: Record<ApiProvider, string> = {
 /**
  * Resolves the API key for a given provider:
  * 1. Try database credential first.
- * 2. Decrypt server-side.
- * 3. Fallback to server environment variable.
+ * 2. Fallback to server environment variable.
+ * 3. Fallback to server encrypted vault (AES-256-GCM, production safe).
  */
 export async function getProviderApiKey(provider: string): Promise<string | null> {
   const cleanProvider = provider.trim().toLowerCase() as ApiProvider;
 
-  // 1. Check Database
+  // 1. Check Database (Admin Settings)
   try {
     const cred = await getDbCredential(cleanProvider);
     if (cred && cred.is_configured && cred.encrypted_value) {
@@ -44,6 +46,20 @@ export async function getProviderApiKey(provider: string): Promise<string | null
     if (envVal && envVal.trim()) {
       return envVal.trim();
     }
+  }
+
+  // 3. Fallback to encrypted production vault
+  try {
+    const vault = vaultEnc as Record<string, string>;
+    const encVal = vault[envVarName];
+    if (encVal && encVal.trim()) {
+      const decrypted = decryptSecret(encVal.trim());
+      if (decrypted && decrypted.trim()) {
+        return decrypted.trim();
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[KeyResolver] Failed to decrypt vault credential for ${cleanProvider}:`, err.message);
   }
 
   return null;
@@ -125,6 +141,19 @@ export async function getAdminProviderStatuses(): Promise<ProviderStatusInfo[]> 
         configured = true;
         maskedKey = maskSecret(envVal.trim().slice(-4));
         source = 'environment';
+      } else {
+        const vault = vaultEnc as Record<string, string>;
+        const encVal = envName ? vault[envName] : null;
+        if (encVal && encVal.trim()) {
+          try {
+            const dec = decryptSecret(encVal.trim());
+            if (dec && dec.trim()) {
+              configured = true;
+              maskedKey = maskSecret(dec.trim().slice(-4));
+              source = 'environment';
+            }
+          } catch {}
+        }
       }
     }
 

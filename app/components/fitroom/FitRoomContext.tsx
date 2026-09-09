@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import type { CompletedTryOn } from '@/app/lib/fitroom/try-on-request';
 import { Product } from '@/app/lib/types';
 import { mapProductToFitRoomType } from '@/app/lib/fitroom/category-mapper';
 import { SkinToneId } from '@/app/lib/fitroom/color-advisor';
@@ -50,6 +51,9 @@ interface FitRoomContextType {
   saveCustomerProfile: (profile: Omit<CustomerBodyProfile, 'isCompleted'>) => void;
   getSuggestedSize: () => string;
   // FitRoom Try-On Result Synchronization
+  completedTryOn: CompletedTryOn | null;
+  completeTryOn: (result: CompletedTryOn) => void;
+  clearTryOnResult: () => void;
   tryOnResultUrl: string | null;
   setTryOnResultUrl: (url: string | null) => void;
   tryOnBeforeUrl: string | null;
@@ -77,30 +81,13 @@ export function FitRoomProvider({ children }: { children: React.ReactNode }) {
     hbr?: number;
   } | null>(null);
 
-  const [tryOnResultUrl, setTryOnResultUrlState] = useState<string | null>(null);
-  const [tryOnBeforeUrl, setTryOnBeforeUrlState] = useState<string | null>(null);
-
-  const setTryOnResultUrl = (url: string | null) => {
-    setTryOnResultUrlState(url);
-    try {
-      if (url) {
-        sessionStorage.setItem('lining_fitroom_last_result', url);
-      } else {
-        sessionStorage.removeItem('lining_fitroom_last_result');
-      }
-    } catch {}
-  };
-
-  const setTryOnBeforeUrl = (url: string | null) => {
-    setTryOnBeforeUrlState(url);
-    try {
-      if (url) {
-        sessionStorage.setItem('lining_fitroom_last_before', url);
-      } else {
-        sessionStorage.removeItem('lining_fitroom_last_before');
-      }
-    } catch {}
-  };
+  const [completedTryOn, setCompletedTryOn] = useState<CompletedTryOn | null>(null);
+  const [tryOnResultUrl, setTryOnResultUrl] = useState<string | null>(null);
+  const [tryOnBeforeUrl, setTryOnBeforeUrl] = useState<string | null>(null);
+  const completeTryOn = useCallback((result: CompletedTryOn) => {
+    setCompletedTryOn(result);
+  }, []);
+  const clearTryOnResult = useCallback(() => setCompletedTryOn(null), []);
 
   // Load profile from localStorage & try-on products from sessionStorage
   useEffect(() => {
@@ -109,14 +96,9 @@ export function FitRoomProvider({ children }: { children: React.ReactNode }) {
       if (storedProfile) {
         setCustomerProfile(JSON.parse(storedProfile));
       }
-      const storedResult = sessionStorage.getItem('lining_fitroom_last_result');
-      if (storedResult) {
-        setTryOnResultUrlState(storedResult);
-      }
-      const storedBefore = sessionStorage.getItem('lining_fitroom_last_before');
-      if (storedBefore) {
-        setTryOnBeforeUrlState(storedBefore);
-      }
+      // Legacy results may be sample photos with no task or selection provenance.
+      sessionStorage.removeItem('lining_fitroom_last_result');
+      sessionStorage.removeItem('lining_fitroom_last_before');
     } catch {}
   }, []);
 
@@ -305,6 +287,9 @@ export function FitRoomProvider({ children }: { children: React.ReactNode }) {
         closeProfileModal,
         saveCustomerProfile,
         getSuggestedSize,
+        completedTryOn,
+        completeTryOn,
+        clearTryOnResult,
         tryOnResultUrl,
         setTryOnResultUrl,
         tryOnBeforeUrl,
